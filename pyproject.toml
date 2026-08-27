@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "photo-date-restore"
+version = "1.0.0"
+description = "Restore photo/video capture datetime from Google Takeout JSON sidecars"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+geo = ["timezonefinder"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+photo-date-restore = "photo_date_restore.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["photo_date_restore*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
