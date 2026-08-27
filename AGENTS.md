@@ -12,11 +12,11 @@ Use the following precedence when requirements differ:
 
 1. The user's latest explicit instructions
 2. This `AGENTS.md`
-3. `docs/design.md`, which is the canonical design specification
-4. `README.md` and `CHANGELOG.md`
+3. `docs/ja/design.md`, which is the canonical Japanese design specification
+4. `README-ja.md`, its English translation `README.md`, and `CHANGELOG.md`
 5. The current implementation and tests
 
-Read `docs/design.md`, the user-facing documentation, the relevant implementation, and the tests before modifying behavior. `CLAUDE.md`, when present, is also required context for maintaining this file. If documentation and working code have a minor structural difference but the code already satisfies the behavioral and safety requirements, do not redesign the code merely to mirror the document's proposed module layout.
+Read `docs/ja/design.md`, the relevant user-facing documentation under `docs/ja/` and `docs/en/`, the relevant implementation, and the tests before modifying behavior. `docs/design.md` is retained as a compatibility pointer. `CLAUDE.md`, when present, is also required context for maintaining this file. If documentation and working code have a minor structural difference but the code already satisfies the behavioral and safety requirements, do not redesign the code merely to mirror the document's proposed module layout.
 
 ## Protected data
 
@@ -32,7 +32,7 @@ The repository must ignore `sources/`; never add source photos or JSON to Git.
 
 ## Datetime safety
 
-Datetime selection is whitelist-based. Preserve the ordering and exclusions documented in `docs/design.md`.
+Datetime selection is whitelist-based. Preserve the ordering and exclusions documented in `docs/ja/design.md`.
 
 - Existing trustworthy capture metadata such as `EXIF:DateTimeOriginal`, `EXIF:CreateDate`, and approved capture-date XMP tags takes precedence over JSON.
 - JSON `photoTakenTime.timestamp` is the v1.0 sidecar source for a missing capture datetime. It is an absolute UTC instant.

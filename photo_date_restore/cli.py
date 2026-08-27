@@ -9,9 +9,17 @@ from . import exiftool_client as et
 from .models import Status
 from .pipeline import Options, run
 from .report import summarize, write_report
+from .tz import validate_timezone_name
 
 CONFLICT_STATUSES = {Status.AMBIGUOUS_JSON.value, Status.EXIF_JSON_CONFLICT.value}
 ERROR_STATUSES = {Status.ERROR.value, Status.VERIFY_FAILED.value}
+
+
+def _timezone_arg(value: str) -> str:
+    try:
+        return validate_timezone_name(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -26,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dry-run", action="store_true", help="解析のみ（既定。後方互換のため受け付ける）")
     p.add_argument("-y", "--yes", action="store_true", help="in-place の確認プロンプトを省略")
 
-    p.add_argument("--timezone", type=str, default=None, help="IANA タイムゾーン名（例 Asia/Tokyo）")
+    p.add_argument("--timezone", type=_timezone_arg, default=None, help="IANA タイムゾーン名（例 Asia/Tokyo）")
 
     p.add_argument("--report", type=Path, default=None, help="監査レポート出力先（.csv / .jsonl）")
     p.add_argument("--report-format", choices=["csv", "jsonl"], default=None)

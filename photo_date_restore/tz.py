@@ -6,11 +6,21 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 QUARTER_HOUR = 900  # seconds
 MAX_TZ_OFFSET = 14 * 3600  # seconds; covers up to UTC+14 (Kiribati)
 DEFAULT_TZ_TOLERANCE = 90  # seconds; absorbs GPS fix delay / clock drift
 SIBLING_MIN_COUNT = 3  # design §8.2 tier 3: "既定 3 件以上"
+
+
+def validate_timezone_name(name: str) -> str:
+    """Return a valid IANA timezone name or raise ValueError."""
+    try:
+        ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise ValueError(f"invalid IANA timezone: {name}") from exc
+    return name
 
 
 def round_to_quarter_hour(seconds: int, tolerance: int = DEFAULT_TZ_TOLERANCE) -> Optional[int]:

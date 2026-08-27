@@ -22,7 +22,10 @@ class JsonParseError(Exception):
 
 
 def _read_json_text(path: Path) -> dict:
-    raw = path.read_bytes()
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise JsonParseError(f"could not read {path}: {exc}") from exc
     last_err: Optional[Exception] = None
     for enc in _ENCODINGS:
         try:
@@ -72,6 +75,15 @@ def load_sidecar(path: Path) -> SidecarInfo:
 
     photo_taken_time = _extract_timestamp(data, "photoTakenTime")
     creation_time = _extract_timestamp(data, "creationTime")
+
+    has_photo_taken_time = "photoTakenTime" in data
+    has_creation_time = "creationTime" in data
+    if (has_photo_taken_time or has_creation_time) and title is None:
+        raise JsonParseError(f"{path}: media sidecar has no non-empty title")
+    if has_photo_taken_time and photo_taken_time is None:
+        raise JsonParseError(f"{path}: invalid photoTakenTime.timestamp")
+    if not has_photo_taken_time and has_creation_time and creation_time is None:
+        raise JsonParseError(f"{path}: invalid creationTime.timestamp")
 
     is_sidecar = title is not None and (photo_taken_time is not None or creation_time is not None)
 

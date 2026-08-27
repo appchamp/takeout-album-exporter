@@ -23,6 +23,7 @@ from .decide import decide
 from .mediawrite import SUPPORTED_WRITE_TYPES, write_media_datetime
 from .models import Decision, JsonMatchTier, SidecarInfo, Status, TzSource
 from .sidecar import make_candidate, match_all
+from .tz import validate_timezone_name
 
 IGNORED_NAMES = {".DS_Store"}
 IGNORED_PREFIXES = ("._",)
@@ -64,12 +65,9 @@ def _is_ignored(name: str) -> bool:
 def _cli_offset_seconds(tz_name: Optional[str], instant_utc: Optional[datetime]) -> Optional[int]:
     if not tz_name or instant_utc is None:
         return None
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    from zoneinfo import ZoneInfo
 
-    try:
-        zone = ZoneInfo(tz_name)
-    except ZoneInfoNotFoundError:
-        return None
+    zone = ZoneInfo(tz_name)
     local = instant_utc.astimezone(zone)
     return int(local.utcoffset().total_seconds())
 
@@ -92,6 +90,8 @@ def run(opts: Options) -> List[dict]:
 
 
 def _validate_options(opts: Options) -> None:
+    if opts.timezone is not None:
+        validate_timezone_name(opts.timezone)
     if opts.move_json is None:
         return
     if not opts.in_place:
@@ -116,20 +116,33 @@ def process_directory(dir_path: Path, opts: Options) -> List[dict]:
 
     sidecars: Dict[str, SidecarInfo] = {}
     candidates = []
-    corrupt_json_names = set()
+    corrupt_json = []
     for je in json_entries:
         try:
             info = jsonmeta.load_sidecar(Path(je.path))
-        except jsonmeta.JsonParseError:
-            corrupt_json_names.add(je.name)
+        except jsonmeta.JsonParseError as exc:
+            corrupt_json.append((je.name, str(exc)))
             continue
         if info.is_album_metadata:
+            candidate = make_candidate(je.name, je.name, info.title)
+            if Path(candidate.stem).suffix.lower() in MEDIA_EXTENSIONS_ALL:
+                corrupt_json.append((
+                    je.name,
+                    f"{je.path}: media sidecar has no usable photoTakenTime or creationTime",
+                ))
             continue
         sidecars[je.name] = info
         candidates.append(make_candidate(je.name, je.name, info.title))
 
     media_names = [e.name for e in media_entries]
     match_results = match_all(media_names, candidates)
+    corrupt_by_media = {name: [] for name in media_names}
+    for json_name, error in corrupt_json:
+        candidate = make_candidate(json_name, json_name, None)
+        corrupt_matches = match_all(media_names, [candidate])
+        for media_name, outcome in corrupt_matches.items():
+            if outcome.tier != JsonMatchTier.NONE:
+                corrupt_by_media[media_name].append((json_name, error))
 
     tags_by_path = et.read_tags_batch([Path(e.path) for e in media_entries], exiftool_path=opts.exiftool_path)
 
@@ -148,6 +161,7 @@ def process_directory(dir_path: Path, opts: Options) -> List[dict]:
             gps_utc=metaread.extract_gps_datetime(tags),
             explicit_offset=metaread.extract_explicit_offset_seconds(tags),
             cli_offset=_cli_offset_seconds(opts.timezone, sidecar.photo_taken_time if sidecar else None),
+            sidecar_errors=corrupt_by_media[e.name],
         )
 
     pass1 = _decide_all(ctx_by_name, opts)
@@ -170,6 +184,9 @@ def _decide_all(ctx_by_name: Dict[str, dict], opts: Options) -> Dict[str, Option
     result: Dict[str, Optional[Decision]] = {}
     for name, ctx in ctx_by_name.items():
         outcome = ctx["outcome"]
+        if ctx["sidecar_errors"]:
+            result[name] = None
+            continue
         if outcome.tier == JsonMatchTier.NONE:
             result[name] = None
             continue
@@ -259,6 +276,18 @@ def _build_row(dir_path: Path, opts: Options, ctx: dict, decision: Optional[Deci
         planned_json_action="NONE",
         planned_json_destination="",
     )
+
+    if ctx["sidecar_errors"]:
+        row["json_sidecar"] = ";".join(name for name, _error in ctx["sidecar_errors"])
+        row["json_candidates"] = outcome.candidate_count + len(ctx["sidecar_errors"])
+        row["status"] = Status.ERROR.value
+        row["new_mtime"] = row["old_mtime"]
+        row["error"] = "; ".join(
+            f"SIDECAR_PARSE_ERROR({name}): {error}" for name, error in ctx["sidecar_errors"]
+        )
+        row["message"] = "SIDECAR_PARSE_ERROR"
+        _handle_json_move(row, sidecar, opts)
+        return row
 
     if outcome.tier == JsonMatchTier.NONE:
         row["status"] = Status.NO_JSON.value
@@ -513,7 +542,9 @@ def _apply(row: dict, source_path: Path, decision: Decision, file_type: str, opt
             shutil.copyfile(source_path, target)
         elif not target.exists():
             # dry-run: nothing on disk yet, nothing more to check.
-            row["new_mtime"] = row["selected_datetime"] or row["old_mtime"]
+            row["new_mtime"] = (
+                decision.mtime_datetime.isoformat() if decision.mtime_datetime else row["old_mtime"]
+            )
             return
 
     if opts.in_place and _already_correct(target, decision, file_type):

@@ -17,10 +17,10 @@ def test_exact_json_suffix():
 
 
 def test_supplemental_metadata_suffix():
-    c = cand("j1", "IMG_6497.JPG.supplemental-metadata.json", "IMG_6497.JPG")
-    result = match_all(["IMG_6497.JPG"], [c])
-    assert result["IMG_6497.JPG"].sidecar_ref == "j1"
-    assert result["IMG_6497.JPG"].tier == JsonMatchTier.T1_EXACT_TITLE
+    c = cand("j1", "IMG_0001.JPG.supplemental-metadata.json", "IMG_0001.JPG")
+    result = match_all(["IMG_0001.JPG"], [c])
+    assert result["IMG_0001.JPG"].sidecar_ref == "j1"
+    assert result["IMG_0001.JPG"].tier == JsonMatchTier.T1_EXACT_TITLE
 
 
 def test_truncated_supplemental_metadata_suffix():

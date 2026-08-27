@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### ドキュメント
+
+- `README-ja.md`を日本語正本として新設し、`README.md`をその英訳として整理
+- 利用マニュアルと設計書を`docs/ja/`・`docs/en/`へ分離し、旧`docs/design.md`は互換案内として維持
+- 実CLIに照合したQuick Start、実データdry-run例、report/status、timezone、in-place、JSON退避、安全な推奨ワークフローを追加
+
 ## v1.0.0 (2026-08-27)
 
 初版リリース。設計は [`docs/design.md`](docs/design.md) を参照。

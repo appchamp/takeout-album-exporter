@@ -1,6 +1,8 @@
 # Source data
 sources/
 
+.codex
+
 # Virtual environments
 .venv/
 venv/

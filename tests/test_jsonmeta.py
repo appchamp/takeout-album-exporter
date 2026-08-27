@@ -1,7 +1,9 @@
 """Unit tests for photo_date_restore.jsonmeta."""
 import json
 
-from photo_date_restore.jsonmeta import load_sidecar
+import pytest
+
+from photo_date_restore.jsonmeta import JsonParseError, load_sidecar
 
 
 def write_json(tmp_path, name, data):
@@ -24,31 +26,30 @@ def test_media_sidecar_classified_correctly(tmp_path):
 
 
 def test_album_metadata_excluded_no_timestamps(tmp_path):
-    p = write_json(tmp_path, "メタデータ.json", {"title": "集合写真"})
+    p = write_json(tmp_path, "メタデータ.json", {"title": "サンプルアルバム"})
     info = load_sidecar(p)
     assert info.is_album_metadata is True
 
 
 def test_album_metadata_with_date_key_still_excluded(tmp_path):
     p = write_json(tmp_path, "メタデータ.json", {
-        "title": "集合写真", "date": {"timestamp": "1774575640", "formatted": "x"},
+        "title": "サンプルアルバム", "date": {"timestamp": "1774575640", "formatted": "x"},
     })
     info = load_sidecar(p)
     assert info.is_album_metadata is True
 
 
-def test_negative_timestamp_ignored(tmp_path):
+def test_negative_sidecar_timestamp_is_parse_error(tmp_path):
     p = write_json(tmp_path, "a.json", {
         "title": "a.jpg", "photoTakenTime": {"timestamp": "-5", "formatted": "x"},
     })
-    info = load_sidecar(p)
-    assert info.photo_taken_time is None
-    assert info.is_album_metadata is True  # no usable timestamp at all
+    with pytest.raises(JsonParseError, match="invalid photoTakenTime.timestamp"):
+        load_sidecar(p)
 
 
-def test_far_future_timestamp_ignored(tmp_path):
+def test_far_future_sidecar_timestamp_is_parse_error(tmp_path):
     p = write_json(tmp_path, "a.json", {
         "title": "a.jpg", "photoTakenTime": {"timestamp": "9999999999", "formatted": "x"},
     })
-    info = load_sidecar(p)
-    assert info.photo_taken_time is None
+    with pytest.raises(JsonParseError, match="invalid photoTakenTime.timestamp"):
+        load_sidecar(p)
