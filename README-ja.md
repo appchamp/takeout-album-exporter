@@ -1,4 +1,4 @@
-# photo-date-restore
+# 写真日時・メタデータ修復ツール（Google フォトの Google Takeout データ）
 
 English: [README.md](README.md)
 

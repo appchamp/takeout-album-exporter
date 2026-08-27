@@ -1,8 +1,8 @@
-# photo-date-restore
+# Photo Date & Metadata Restorer for Google Photos with Google Takeout
 
 Japanese: [README-ja.md](README-ja.md)
 
-`photo-date-restore` is a safety-oriented Python CLI for matching media from a Google Photos Takeout export with sidecar JSON, then restoring missing capture timestamps and filesystem `mtime`. It prioritizes trustworthy existing EXIF/XMP capture metadata and uses JSON `photoTakenTime` only when needed.
+`photo-date-restore` tool is a safety-oriented Python CLI for matching media from a Google Photos Takeout export with sidecar JSON, then restoring missing capture timestamps and filesystem `mtime`. It prioritizes trustworthy existing EXIF/XMP capture metadata and uses JSON `photoTakenTime` only when needed.
 
 - Detailed guide (canonical Japanese source): [docs/en/usage.md](docs/en/usage.md)
 - Design and safety specification: [docs/ja/design.md](docs/ja/design.md)
