@@ -118,7 +118,53 @@ python -m photo_date_restore \
   --apply
 ```
 
-## 4. `--output` and dry run / apply
+## 4. GUI version (macOS)
+
+The GUI is a screen for the existing CLI copy mode. CLI arguments and behavior are unchanged and remain fully supported. The GUI does not expose `--in-place` or `--move-json`; those remain CLI-only.
+
+### 4.1 Requirements and launch
+
+Python 3.14 with Tk and ExifTool are required. ExifTool is not bundled in the `.app`.
+
+```bash
+brew install python-tk@3.14
+brew install exiftool
+
+photo-date-restore-gui
+# or
+python -m photo_date_restore.gui
+```
+
+### 4.2 Use
+
+1. Select the Input and Output folders.
+2. Start with the default `Dry run (analyze only, write nothing)`. Optionally set timezone, output overwrite, and a CSV / JSONL audit report.
+3. Press `Start` and review per-directory progress and results in the log.
+4. After the completion display, use `Open Output Folder` to open the destination in Finder.
+
+### 4.3 Build the `.app`
+
+At the repository root, use the GUI development environment:
+
+```bash
+./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
+```
+
+The result is `dist/Photo Date Restore.app`. The launched `.app` does not bundle ExifTool and searches `PATH`, `/opt/homebrew/bin`, then `/usr/local/bin`.
+
+### 4.4 Manual GUI test checklist
+
+- The GUI launches.
+- Input and Output folders can be selected.
+- Dry run, timezone, output overwrite, and audit-report toggles work.
+- With ExifTool present, its path appears in the log.
+- With ExifTool absent, startup continues and Start gives a clear failure.
+- Start in dry-run and confirm that no output is created.
+- Start with apply and confirm copy-mode output.
+- After invalid input, recover from the error and start again.
+- After success, `Open Output Folder` is enabled and opens Finder.
+
+## 5. `--output` and dry run / apply
 
 Besides `INPUT`, exactly one of `--output DIR` or `--in-place` is required.
 
@@ -145,7 +191,7 @@ Choose this mode to protect the original Takeout. With apply, media that cannot 
 | `--move-json DIR` | Archive successful sidecars; in-place only |
 | `--exiftool PATH` | Select the ExifTool executable |
 
-## 5. Handle timezone safely
+## 6. Handle timezone safely
 
 JSON `photoTakenTime.timestamp` is an absolute UTC instant. `DateTimeOriginal`, on the other hand, is usually a local wall-clock value without a timezone. Writing UTC digits directly can shift the capture time by hours.
 
@@ -188,7 +234,7 @@ Do not add this without evidence to a complete Google Photos tree that may conta
 
 When timezone is unknown, omit it and examine `JSON_TIME_MTIME_ONLY` in the report. Apply can safely repair only `mtime`; it does not write local capture metadata.
 
-## 6. `--in-place` (advanced)
+## 7. `--in-place` (advanced)
 
 **Do not run in-place against the original Google Takeout from the start.** First make a backup or use a working copy made with copy mode.
 
@@ -211,7 +257,7 @@ python -m photo_date_restore \
 
 An interactive terminal asks for confirmation. Add `--yes` only for deliberate automation. After an ExifTool write, `<file>_original` remains until read-back verification succeeds; on failure the tool restores it and reports `VERIFY_FAILED`.
 
-## 7. How to read the report
+## 8. How to read the report
 
 Look at **`status` first**. Then inspect the evidence, planned action, and timestamps.
 
@@ -255,7 +301,7 @@ In a dry run, focus on `planned_*` and `new_mtime`. A `.csv` report defaults to 
 
 `UNSUPPORTED` and `SKIPPED` are enum values but are not normally emitted by the current standard path. Unsupported HEIC/video metadata writes normally appear as `UNSUPPORTED_FORMAT_FOR_METADATA(...)` in `message`.
 
-## 8. Real-data examples (read-only)
+## 9. Real-data examples (read-only)
 
 The following `sources/Takeout/...` paths are development samples. Substitute your paths as a normal user. Never use `--in-place --apply` on these samples.
 
@@ -309,7 +355,7 @@ python -m photo_date_restore \
 
 Normally do not specify timezone here. Read the report, then decide by album only where capture location is certain.
 
-## 9. `--move-json` (advanced)
+## 10. `--move-json` (advanced)
 
 `--move-json` is in-place only. It archives JSON rather than deleting it. Its destination must be outside INPUT and outside the repository's `sources/` tree.
 
@@ -338,7 +384,7 @@ python -m photo_date_restore \
 - JSON is not deleted. Rescanning INPUT after archiving returns `NO_JSON` because the sidecar is no longer there.
 - A collision is not overwritten and is recorded as `planned_json_action=SKIP_DESTINATION_EXISTS`.
 
-## 10. Common errors
+## 11. Common errors
 
 ### `photo-date-restore: command not found`
 
@@ -378,7 +424,7 @@ Asia/Tokyo
 
 This is normal in a dry run. After reviewing the report, add `--apply` to the same command to create output.
 
-## 11. Safest recommended workflow
+## 12. Safest recommended workflow
 
 1. Preserve the original Google Takeout separately.
 2. Move to the repository.

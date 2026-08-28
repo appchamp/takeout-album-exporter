@@ -5,6 +5,7 @@ sources/
 
 # Virtual environments
 .venv/
+.venv-gui/
 venv/
 
 # Python

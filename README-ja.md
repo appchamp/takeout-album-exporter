@@ -85,6 +85,36 @@ python -m photo_date_restore \
 
 `--output DIR` は元データを変更せず、`--apply` 時に修復済みコピーを別フォルダへ作成します。元 Takeout を保護したい場合の推奨モードです。詳細な手順、timezone、report、in-place、JSON 退避、エラー対処は [利用マニュアル](docs/ja/usage.md) を参照してください。
 
+## GUI 版（macOS）
+
+Tk を使える Python と ExifTool が必要です。macOS の Homebrew では次のように準備します。ExifTool はアプリに同梱されません。
+
+```bash
+brew install python-tk@3.14
+brew install exiftool
+```
+
+パッケージをインストール後、次のいずれかで起動します。
+
+```bash
+photo-date-restore-gui
+python -m photo_date_restore.gui
+```
+
+`Input folder` と `Output folder` を選び、必要に応じて dry-run、timezone、既存出力の上書き、監査 report（CSV / JSONL）を設定して `Start` を押します。ログでディレクトリごとの進行と結果を確認でき、完了後は `Open Output Folder` で出力先を Finder に表示できます。
+
+GUI は copy mode 専用です。`--in-place` と `--move-json` は引き続き CLI 専用です。CLI の引数・動作は変更されず、引き続き完全に利用できます。
+
+### `.app` のビルド
+
+GUI 開発用の `.venv-gui` で、リポジトリのルートから実行します。
+
+```bash
+./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
+```
+
+生成物は `dist/Photo Date Restore.app` です。この `.app` に ExifTool は含まれません。起動時に `PATH`、`/opt/homebrew/bin`、`/usr/local/bin` の順で ExifTool を探します。
+
 ## 安全上の注意
 
 - 必ず **dry-run → report 確認 → apply → 出力確認** の順で進めてください。

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 追加
+
+- macOS 向け Tkinter GUI（`photo-date-restore-gui` / `python -m photo_date_restore.gui`）。copy mode 専用で、dry-run・timezone・出力上書き・監査 report を設定できる
+- `Photo Date Restore.app` を再現可能にビルドする PyInstaller の spec。ExifTool は同梱せず外部依存のまま
+- GUI へ進行状況を通知するための、pipeline のディレクトリ単位の任意 progress コールバック（CLI の挙動は不変）
+
 ### ドキュメント
 
 - `README-ja.md`を日本語正本として新設し、`README.md`をその英訳として整理

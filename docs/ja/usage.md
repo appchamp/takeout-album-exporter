@@ -118,7 +118,53 @@ python -m photo_date_restore \
   --apply
 ```
 
-## 4. `--output` と dry-run / apply
+## 4. GUI 版（macOS）
+
+GUI は既存 CLI の copy mode を操作するための画面です。CLI の引数や動作は変わらず、引き続き完全に利用できます。GUI では `--in-place` と `--move-json` を公開せず、これらは CLI 専用です。
+
+### 4.1 必要なものと起動
+
+Python 3.14 用 Tk と ExifTool が必要です。ExifTool は `.app` に同梱されません。
+
+```bash
+brew install python-tk@3.14
+brew install exiftool
+
+photo-date-restore-gui
+# または
+python -m photo_date_restore.gui
+```
+
+### 4.2 使い方
+
+1. `Input folder` と `Output folder` を選びます。
+2. 既定の `Dry run (analyze only, write nothing)` のまま最初に確認します。必要に応じて timezone、既存出力の上書き、CSV / JSONL の監査 report を設定します。
+3. `Start` を押し、ログのディレクトリごとの進行と結果を確認します。
+4. 完了表示後、`Open Output Folder` で出力先を Finder に開けます。
+
+### 4.3 `.app` のビルド
+
+リポジトリのルートで GUI 開発用環境を使います。
+
+```bash
+./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
+```
+
+生成物は `dist/Photo Date Restore.app` です。起動した `.app` は ExifTool を同梱せず、`PATH`、`/opt/homebrew/bin`、`/usr/local/bin` を順に検索します。
+
+### 4.4 手動 GUI テストチェックリスト
+
+- GUI を起動できる
+- Input / Output folder を選択できる
+- dry-run、timezone、出力上書き、監査 report の各切替を確認できる
+- ExifTool がある場合にパスがログへ表示される
+- ExifTool がない場合に起動は継続し、Start 時に分かりやすく失敗する
+- dry-run で Start して出力を作成しない
+- apply で Start して copy mode の出力を確認する
+- 不正な入力後もエラー表示から Start を再試行できる
+- 成功後に `Open Output Folder` が有効になり Finder を開く
+
+## 5. `--output` と dry-run / apply
 
 `INPUT` に加えて、`--output DIR` または `--in-place` の一方が必須です。
 
@@ -147,7 +193,7 @@ python -m photo_date_restore INPUT (--output DIR | --in-place) [OPTIONS]
 | `--move-json DIR` | 成功 sidecar を退避（`--in-place` 専用） |
 | `--exiftool PATH` | ExifTool の実行ファイルを明示 |
 
-## 5. timezone を安全に扱う
+## 6. timezone を安全に扱う
 
 JSON `photoTakenTime.timestamp` は UTC の絶対時刻です。一方、`DateTimeOriginal` は通常 timezone を持たないローカル時刻です。UTC の数字をそのまま書くと、撮影時刻を数時間ずらすおそれがあります。
 
@@ -190,7 +236,7 @@ python -m photo_date_restore \
 
 timezone が分からなければ指定せず、`JSON_TIME_MTIME_ONLY` を report で確認してください。apply しても、ローカル撮影日時メタデータは書かず `mtime` だけを修復する安全な結果になります。
 
-## 6. `--in-place`（上級者向け）
+## 7. `--in-place`（上級者向け）
 
 **元の Google Takeout そのものへ最初から in-place 実行しないでください。** 先にバックアップを作るか、copy mode で作成した作業コピーを使います。
 
@@ -213,7 +259,7 @@ python -m photo_date_restore \
 
 対話端末では確認が表示されます。自動処理で確認を省略する必要がある場合だけ `--yes` を追加します。ExifTool の書込み後は読み戻し検証が成功するまで `<file>_original` を保持し、検証失敗時は復旧して `VERIFY_FAILED` を report します。
 
-## 7. report の読み方
+## 8. report の読み方
 
 最初に **`status` を見ます**。次に、その判断の根拠、予定した操作、日時を確認します。
 
@@ -257,7 +303,7 @@ dry-run では `planned_*` 列と `new_mtime` を見ます。`--report` は `.cs
 
 `UNSUPPORTED` と `SKIPPED` は enum にありますが、現行の通常処理では原則として出ません。HEIC/動画等の metadata 書込み非対応は通常 `message` の `UNSUPPORTED_FORMAT_FOR_METADATA(...)` で示されます。
 
-## 8. 実データの例（読み取り専用）
+## 9. 実データの例（読み取り専用）
 
 次の `sources/Takeout/...` は開発サンプルです。一般利用者は自分のパスに置き換えてください。これらへ `--in-place --apply` は実行しません。
 
@@ -311,7 +357,7 @@ python -m photo_date_restore \
 
 ここでは原則 timezone を指定しません。report を見て、撮影地が確かなアルバムだけを分けて判断します。
 
-## 9. `--move-json`（上級者向け）
+## 10. `--move-json`（上級者向け）
 
 `--move-json` は in-place 専用で、JSON の削除ではなく退避です。入力外かつリポジトリの `sources/` 外の退避先を指定します。
 
@@ -340,7 +386,7 @@ python -m photo_date_restore \
 - JSON は削除しません。退避後に元 INPUT を再走査すると sidecar がないため `NO_JSON` になります。
 - 退避先の衝突は上書きせず、`planned_json_action=SKIP_DESTINATION_EXISTS` と記録します。
 
-## 10. よくあるエラー
+## 11. よくあるエラー
 
 ### `photo-date-restore: command not found`
 
@@ -380,7 +426,7 @@ Asia/Tokyo
 
 dry-run では正常です。実際に output を作成するには、report 確認後に同じコマンドへ `--apply` を付けます。
 
-## 11. 最も安全な利用例
+## 12. 最も安全な利用例
 
 1. Google Takeout 原本を別途保存する。
 2. リポジトリへ移動する。

@@ -14,9 +14,11 @@ dependencies = []
 [project.optional-dependencies]
 geo = ["timezonefinder"]
 dev = ["pytest>=7"]
+build = ["pyinstaller>=6.10"]
 
 [project.scripts]
 photo-date-restore = "photo_date_restore.cli:main"
+photo-date-restore-gui = "photo_date_restore.gui.launcher:main"
 
 [tool.setuptools.packages.find]
 include = ["photo_date_restore*"]

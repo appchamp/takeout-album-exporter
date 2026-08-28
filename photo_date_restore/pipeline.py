@@ -13,7 +13,7 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from . import exiftool_client as et
 from . import fsdates
@@ -81,12 +81,33 @@ def discover_directories(root: Path) -> List[Path]:
     return sorted(dirs)
 
 
-def run(opts: Options) -> List[dict]:
+ProgressCallback = Callable[[int, int, Path], None]
+
+
+def run(opts: Options, progress: Optional[ProgressCallback] = None) -> List[dict]:
+    """Process INPUT and return one audit row per discovered media file.
+
+    ``progress``, when given, is notified after each directory is processed
+    with ``(completed_count, total_count, directory)``. It cannot affect
+    processing: exceptions raised by the callback are suppressed.
+    """
     _validate_options(opts)
     rows: List[dict] = []
-    for directory in discover_directories(opts.input):
+    directories = discover_directories(opts.input)
+    total = len(directories)
+    for index, directory in enumerate(directories, start=1):
         rows.extend(process_directory(directory, opts))
+        _notify_progress(progress, index, total, directory)
     return rows
+
+
+def _notify_progress(progress, done: int, total: int, directory: Path) -> None:
+    if progress is None:
+        return
+    try:
+        progress(done, total, directory)
+    except Exception:
+        pass
 
 
 def _validate_options(opts: Options) -> None:

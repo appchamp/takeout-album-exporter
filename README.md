@@ -85,6 +85,36 @@ python -m photo_date_restore \
 
 `--output DIR` leaves the input unchanged and creates repaired copies in another directory when `--apply` is used. It is the recommended mode for protecting an original Takeout. See the [usage guide](docs/en/usage.md) for the full procedure, timezone, reports, in-place mode, JSON archiving, and troubleshooting.
 
+## GUI version (macOS)
+
+The GUI requires Python with Tk and ExifTool. On macOS with Homebrew, install them as follows. ExifTool is required and is not bundled with the application.
+
+```bash
+brew install python-tk@3.14
+brew install exiftool
+```
+
+After installing the package, launch it with either command:
+
+```bash
+photo-date-restore-gui
+python -m photo_date_restore.gui
+```
+
+Select the Input and Output folders, then optionally set dry run, timezone, output overwrite, and an audit report (CSV / JSONL), and press `Start`. The log shows per-directory progress and results; after completion, `Open Output Folder` opens the destination in Finder.
+
+The GUI is copy mode only. `--in-place` and `--move-json` remain CLI-only. The CLI arguments and behavior are unchanged and remain fully supported.
+
+### Build the `.app`
+
+From the repository root, use the GUI development `.venv-gui`:
+
+```bash
+./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
+```
+
+The result is `dist/Photo Date Restore.app`. The `.app` does not include ExifTool; at startup it searches `PATH`, `/opt/homebrew/bin`, and `/usr/local/bin` for it.
+
 ## Safety notes
 
 - Always proceed as **dry run → review report → apply → verify output**.
