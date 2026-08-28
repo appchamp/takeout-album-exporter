@@ -40,6 +40,8 @@ SIDECAR_INDEX_COLUMNS = (
     "status",
 )
 PROTECTED_SOURCES_ROOT = Path(__file__).resolve().parents[1] / "sources"
+EXIFTOOL_READ_BATCH_SIZE = 50
+ANALYSIS_PROGRESS_INTERVAL = 50
 
 
 @dataclass
@@ -84,11 +86,15 @@ def discover_directories(root: Path) -> List[Path]:
 ProgressCallback = Callable[[int, int, Path], None]
 FileProgressCallback = Callable[[int, dict], None]
 DirectoryStartCallback = Callable[[int, int, Path], None]
+MetadataProgressCallback = Callable[[Path, int, int], None]
+AnalysisProgressCallback = Callable[[Path, int, int], None]
 
 
 def run(opts: Options, progress: Optional[ProgressCallback] = None,
         file_progress: Optional[FileProgressCallback] = None,
         directory_start: Optional[DirectoryStartCallback] = None,
+        metadata_progress: Optional[MetadataProgressCallback] = None,
+        analysis_progress: Optional[AnalysisProgressCallback] = None,
         cancel_event=None) -> List[dict]:
     """Process INPUT and return one audit row per discovered media file.
 
@@ -99,6 +105,14 @@ def run(opts: Options, progress: Optional[ProgressCallback] = None,
     ``file_progress``, when given, is notified as ``(index, row)`` whenever a
     file row is finalized. ``index`` is a one-based sequential count. It
     cannot affect processing: exceptions raised by the callback are suppressed.
+
+    ``metadata_progress``, when given, is notified after each ExifTool metadata
+    read batch with ``(directory, completed_count, total_count)``. It cannot
+    affect processing: exceptions raised by the callback are suppressed.
+
+    ``analysis_progress``, when given, is notified during the pass-1 metadata
+    decision loop with ``(directory, completed_count, total_count)``. It cannot
+    affect processing: exceptions raised by the callback are suppressed.
 
     ``cancel_event``, when set, stops processing at a safe file or directory
     boundary and returns the rows finalized so far without raising an exception.
@@ -123,6 +137,10 @@ def run(opts: Options, progress: Optional[ProgressCallback] = None,
             kwargs["on_row"] = _on_row
         if cancel_event is not None:
             kwargs["cancel_event"] = cancel_event
+        if metadata_progress is not None:
+            kwargs["metadata_progress"] = metadata_progress
+        if analysis_progress is not None:
+            kwargs["analysis_progress"] = analysis_progress
         rows.extend(process_directory(directory, opts, **kwargs))
         _notify_progress(progress, index, total, directory)
     return rows
@@ -155,6 +173,24 @@ def _notify_directory_start(directory_start, index: int, total: int, directory: 
         pass
 
 
+def _notify_metadata_progress(metadata_progress, directory: Path, completed: int, total: int) -> None:
+    if metadata_progress is None:
+        return
+    try:
+        metadata_progress(directory, completed, total)
+    except Exception:
+        pass
+
+
+def _notify_analysis_progress(analysis_progress, directory: Path, completed: int, total: int) -> None:
+    if analysis_progress is None:
+        return
+    try:
+        analysis_progress(directory, completed, total)
+    except Exception:
+        pass
+
+
 def _validate_options(opts: Options) -> None:
     if opts.timezone is not None:
         validate_timezone_name(opts.timezone)
@@ -173,7 +209,10 @@ def _validate_options(opts: Options) -> None:
         raise ValueError("--move-json destination must be a directory")
 
 
-def process_directory(dir_path: Path, opts: Options, on_row=None, cancel_event=None) -> List[dict]:
+def process_directory(
+    dir_path: Path, opts: Options, on_row=None, cancel_event=None, metadata_progress=None,
+    analysis_progress=None,
+) -> List[dict]:
     entries = [e for e in os.scandir(dir_path) if e.is_file() and not _is_ignored(e.name)]
     json_entries = [e for e in entries if e.name.lower().endswith(".json")]
     media_entries = [e for e in entries if Path(e.name).suffix.lower() in MEDIA_EXTENSIONS_ALL]
@@ -210,7 +249,28 @@ def process_directory(dir_path: Path, opts: Options, on_row=None, cancel_event=N
             if outcome.tier != JsonMatchTier.NONE:
                 corrupt_by_media[media_name].append((json_name, error))
 
-    tags_by_path = et.read_tags_batch([Path(e.path) for e in media_entries], exiftool_path=opts.exiftool_path)
+    media_paths = [Path(e.path) for e in media_entries]
+    batch_tags_by_path: Dict[str, dict] = {}
+    total_media = len(media_paths)
+    _notify_metadata_progress(metadata_progress, dir_path, 0, total_media)
+    for start in range(0, total_media, EXIFTOOL_READ_BATCH_SIZE):
+        if cancel_event is not None and cancel_event.is_set():
+            return []
+        batch = media_paths[start:start + EXIFTOOL_READ_BATCH_SIZE]
+        batch_tags_by_path.update(et.read_tags_batch(batch, exiftool_path=opts.exiftool_path))
+        completed = start + len(batch)
+        _notify_metadata_progress(metadata_progress, dir_path, completed, total_media)
+        # A running ExifTool read is allowed to finish.  Do not start analysis
+        # with incomplete directory metadata, or begin another batch.
+        if cancel_event is not None and cancel_event.is_set():
+            return []
+
+    # Preserve the former one-shot mapping exactly for downstream decisions;
+    # do not depend on ExifTool's record ordering within or across batches.
+    tags_by_path = {
+        str(path): batch_tags_by_path.get(str(path), batch_tags_by_path.get(path, {}))
+        for path in media_paths
+    }
 
     ctx_by_name: Dict[str, dict] = {}
     for e in media_entries:
@@ -230,9 +290,18 @@ def process_directory(dir_path: Path, opts: Options, on_row=None, cancel_event=N
             sidecar_errors=corrupt_by_media[e.name],
         )
 
-    pass1 = _decide_all(ctx_by_name, opts)
+    pass1 = _decide_all(
+        ctx_by_name, opts, analysis_progress=analysis_progress,
+        directory=dir_path, cancel_event=cancel_event,
+    )
+    if pass1 is None:
+        return []
     sibling_offset, sibling_count = _infer_sibling_offset(pass1)
-    final = _redecide_with_siblings(ctx_by_name, pass1, sibling_offset, sibling_count, opts)
+    final = _redecide_with_siblings(
+        ctx_by_name, pass1, sibling_offset, sibling_count, opts, cancel_event=cancel_event,
+    )
+    if final is None:
+        return []
 
     rows = []
     for name, ctx in ctx_by_name.items():
@@ -245,7 +314,10 @@ def process_directory(dir_path: Path, opts: Options, on_row=None, cancel_event=N
     return rows
 
 
-def _decide_all(ctx_by_name: Dict[str, dict], opts: Options) -> Dict[str, Optional[Decision]]:
+def _decide_all(
+    ctx_by_name: Dict[str, dict], opts: Options, analysis_progress=None,
+    directory: Optional[Path] = None, cancel_event=None,
+) -> Optional[Dict[str, Optional[Decision]]]:
     """Pass 1: decide using only each file's own EXPLICIT/GPS evidence.
 
     `--timezone` (CLI) is deliberately withheld here so it can never pre-empt
@@ -253,23 +325,32 @@ def _decide_all(ctx_by_name: Dict[str, dict], opts: Options) -> Dict[str, Option
     point (design §8.2 追補 priority: EXPLICIT > GPS > INFERRED > CLI).
     """
     result: Dict[str, Optional[Decision]] = {}
-    for name, ctx in ctx_by_name.items():
+    total = len(ctx_by_name)
+    if directory is not None:
+        _notify_analysis_progress(analysis_progress, directory, 0, total)
+    for completed, (name, ctx) in enumerate(ctx_by_name.items(), start=1):
+        if cancel_event is not None and cancel_event.is_set():
+            return None
         outcome = ctx["outcome"]
         if ctx["sidecar_errors"]:
             result[name] = None
-            continue
-        if outcome.tier == JsonMatchTier.NONE:
+        elif outcome.tier == JsonMatchTier.NONE:
             result[name] = None
-            continue
-        if outcome.sidecar_ref is None:
+        elif outcome.sidecar_ref is None:
             result[name] = None  # AMBIGUOUS_JSON, handled in _build_row
-            continue
-        result[name] = decide(
-            ctx["existing"], ctx["sidecar"],
-            gps_utc=ctx["gps_utc"], explicit_offset_seconds=ctx["explicit_offset"],
-            cli_offset_seconds=None,
-            conflict_seconds=opts.conflict_seconds, tz_tolerance=opts.tz_tolerance,
-        )
+        else:
+            result[name] = decide(
+                ctx["existing"], ctx["sidecar"],
+                gps_utc=ctx["gps_utc"], explicit_offset_seconds=ctx["explicit_offset"],
+                cli_offset_seconds=None,
+                conflict_seconds=opts.conflict_seconds, tz_tolerance=opts.tz_tolerance,
+            )
+        if directory is not None and completed % ANALYSIS_PROGRESS_INTERVAL == 0 and completed < total:
+            _notify_analysis_progress(analysis_progress, directory, completed, total)
+    if cancel_event is not None and cancel_event.is_set():
+        return None
+    if directory is not None:
+        _notify_analysis_progress(analysis_progress, directory, total, total)
     return result
 
 
@@ -288,12 +369,16 @@ def _infer_sibling_offset(pass1: Dict[str, Optional[Decision]]):
     return None, 0
 
 
-def _redecide_with_siblings(ctx_by_name, pass1, sibling_offset, sibling_count, opts) -> Dict[str, Optional[Decision]]:
+def _redecide_with_siblings(
+    ctx_by_name, pass1, sibling_offset, sibling_count, opts, cancel_event=None,
+) -> Optional[Dict[str, Optional[Decision]]]:
     """Pass 2: re-decide anything pass 1 couldn't resolve with strong evidence,
     now offering both the inferred sibling offset (if any) and `--timezone`.
     decide()'s own tier ordering (INFERRED before CLI) still applies."""
     final = dict(pass1)
     for name, d in pass1.items():
+        if cancel_event is not None and cancel_event.is_set():
+            return None
         if d is not None and d.status in (Status.EXIF_JSON_POSSIBLE_TZ, Status.JSON_TIME_MTIME_ONLY):
             ctx = ctx_by_name[name]
             final[name] = decide(
@@ -303,6 +388,8 @@ def _redecide_with_siblings(ctx_by_name, pass1, sibling_offset, sibling_count, o
                 cli_offset_seconds=ctx["cli_offset"],
                 conflict_seconds=opts.conflict_seconds, tz_tolerance=opts.tz_tolerance,
             )
+    if cancel_event is not None and cancel_event.is_set():
+        return None
     return final
 
 

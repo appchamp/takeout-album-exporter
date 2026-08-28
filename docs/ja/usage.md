@@ -139,8 +139,8 @@ python -m photo_date_restore.gui
 
 1. `Input folder` と `Output folder` を選びます。
 2. 既定の `Dry run (analyze only, write nothing)` と、既定で有効な `Verbose output (show each processed file)` のまま最初に確認します。timezone、既存出力の上書き、CSV / JSONL の監査 report を設定します。
-3. `Start` を押し、dry-run を含むファイル単位の利用者向け説明と、読み込み中のディレクトリをログで確認します。詳細な内部 status は監査 report にそのまま残ります。途中で止めるときは `Cancel` を押します。現在のファイルが安全に完了してから停止し、確定済みの部分結果と監査 report は保持されます。アプリメニューまたは Help メニューの About から Version、著作者、MIT License、Project URL を確認できます。
-4. 完了表示後、`Open Output Folder` で出力先を Finder に開けます。
+3. `Start` を押します。ExifTool の metadata read はディレクトリごとに最大100件ずつのバッチで行われるため、ログにはまず読み込み進捗（`Reading metadata: <dir>`、バッチごとの `[100/1896] Reading metadata...`）が表示され、その後 `Analyzing: <dir>` に切り替わってから dry-run を含むファイル単位の利用者向け説明が表示されます。詳細な内部 status は監査 report にそのまま残ります。途中で止めるときは `Cancel` を押します。次のバッチ境界（metadata read は概ね1バッチ以内）または書き込み中の現在のファイルの完了後に反応し、確定済みの部分結果と監査 report は保持されます。アプリメニューまたは Help メニューの About から Version、著作者、MIT License、Project URL を確認できます。
+4. 完了・キャンセルの結果はメイン画面のログにそのまま表示されます（別ウィンドウは出ません）。続けて `Open Output Folder` で出力先を Finder に開けます。
 
 ### 4.3 `.app` のビルド
 
@@ -161,7 +161,9 @@ python -m photo_date_restore.gui
 - Input / Output folder を選択できる
 - dry-run、既定 ON の Verbose output、timezone、出力上書き、監査 report の各切替を確認できる
 - dry-run でも Verbose output で処理ファイルごとに利用者向け説明が 1 行表示され、内部 status は report に残る
-- Cancel が現在のファイルの完了後に安全に停止し、部分結果と report を保持する
+- 大きめのディレクトリで metadata read の進捗（`Reading metadata:` → `Analyzing:`）が長時間無表示にならず表示される
+- Cancel が次のバッチ境界（metadata read は概ね1バッチ以内）または現在のファイルの完了後に安全に停止し、部分結果と report を保持する
+- 正常完了・Cancel 完了時に別ウィンドウ（popup）が出ない
 - アプリメニューまたは Help メニューの About で Version、著作者、MIT License、Project URL を確認できる
 - ExifTool がある場合にパスがログへ表示される
 - ExifTool がない場合に起動は継続し、Start 時に分かりやすく失敗する

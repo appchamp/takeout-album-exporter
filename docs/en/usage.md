@@ -139,8 +139,8 @@ python -m photo_date_restore.gui
 
 1. Select the Input and Output folders.
 2. Start with the default `Dry run (analyze only, write nothing)` and default-on `Verbose output (show each processed file)`, then set timezone, output overwrite, and a CSV / JSONL audit report.
-3. Press `Start` and review user-facing per-file results, including in dry-run mode, and the directory being read in the log. Detailed internal statuses remain unchanged in the audit report. To stop, press `Cancel`: it safely waits for the current file to finish and preserves completed partial results and their audit report. Use the application menu or Help menu About item to confirm the Version, author, MIT License, and Project URL.
-4. After the completion display, use `Open Output Folder` to open the destination in Finder.
+3. Press `Start`. ExifTool metadata is read in batches of up to 100 files per directory, so the log first shows reading progress (`Reading metadata: <dir>`, then `[100/1896] Reading metadata...` per batch) before switching to `Analyzing: <dir>` and the user-facing per-file results, including in dry-run mode. Detailed internal statuses remain unchanged in the audit report. To stop, press `Cancel`: it reacts at the next batch boundary — typically within one batch of metadata reads, or after the current file being written — and preserves completed partial results and their audit report. Use the application menu or Help menu About item to confirm the Version, author, MIT License, and Project URL.
+4. The log shows the completion or cancellation summary directly in the main window (no separate popup). Then use `Open Output Folder` to open the destination in Finder.
 
 ### 4.3 Build the `.app`
 
@@ -161,7 +161,9 @@ The result is `dist/Photo Date Restore.app`. The launched `.app` does not bundle
 - Input and Output folders can be selected.
 - Dry run, default-on Verbose output, timezone, output overwrite, and audit-report toggles work.
 - Verbose output shows one user-facing line for each processed file, including during dry-run; internal statuses remain in the report.
-- Cancel waits safely for the current file, then preserves partial results and the report.
+- For a large directory, metadata-read progress (`Reading metadata:` → `Analyzing:`) is shown and never goes silent for long.
+- Cancel reacts at the next batch boundary (typically within one metadata-read batch) or after the current file, then preserves partial results and the report.
+- No separate popup window appears on normal completion or after Cancel.
 - The application menu or Help menu About item shows the Version, author, MIT License, and Project URL.
 - With ExifTool present, its path appears in the log.
 - With ExifTool absent, startup continues and Start gives a clear failure.

@@ -105,7 +105,7 @@ photo-date-restore-gui
 python -m photo_date_restore.gui
 ```
 
-Select the Input and Output folders, then set the default-on Verbose output and dry run, timezone, output overwrite, and an audit report (CSV / JSONL), and press `Start`. The log shows user-facing per-file results even in dry-run mode and names the directory being read. `Cancel` safely waits for the current file to finish, preserving completed partial results and their audit report. After completion, `Open Output Folder` opens the destination in Finder.
+Select the Input and Output folders, then set the default-on Verbose output and dry run, timezone, output overwrite, and an audit report (CSV / JSONL), and press `Start`. ExifTool metadata is read in batches of up to 100 files per directory, so the log shows reading progress (`[100/1896] Reading metadata...`) before switching to `Analyzing:` and the user-facing per-file results, even in dry-run mode. `Cancel` reacts at the next batch boundary — typically within one batch of metadata reads, or after the current file being written — preserving completed partial results and their audit report. After completion, the log shows the summary directly in the main window (no separate popup); `Open Output Folder` opens the destination in Finder.
 
 The About item in the application menu or Help menu shows the Version, author, MIT License, and Project URL.
 

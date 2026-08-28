@@ -14,6 +14,9 @@ from ..exiftool_client import ExifToolError
 from . import support
 
 
+MAX_EVENTS_PER_DRAIN = 100
+
+
 class PhotoDateRestoreApp:
     """A small GUI wrapper around the existing pipeline."""
 
@@ -198,6 +201,7 @@ class PhotoDateRestoreApp:
             self.start_button.configure(state="normal")
             return
 
+        self._reset_stage_progress()
         self.running_settings = settings
         self.cancel_event = threading.Event()
         self.cancel_button.configure(state="normal")
@@ -239,6 +243,12 @@ class PhotoDateRestoreApp:
                 directory_start=lambda index, total, directory: self.events.put(
                     ("dirstart", index, total, directory)
                 ),
+                metadata_progress=lambda directory, completed, total: self.events.put(
+                    ("metaprogress", directory, completed, total)
+                ),
+                analysis_progress=lambda directory, completed, total: self.events.put(
+                    ("analysisprogress", directory, completed, total)
+                ),
                 cancel_event=cancel_event,
             )
             if settings.write_report:
@@ -251,19 +261,30 @@ class PhotoDateRestoreApp:
 
     def _drain_queue(self) -> None:
         try:
-            while True:
+            for _ in range(MAX_EVENTS_PER_DRAIN):
                 event = self.events.get_nowait()
                 kind = event[0]
                 if kind == "progress":
                     _kind, done, total, directory = event
-                    self.progress.stop()
-                    self.progress.configure(mode="determinate", maximum=total, value=done)
                     self.status.set(f"Processing {done}/{total}: {directory.name}")
                     self._append_log(f"Processing {done}/{total}: {directory}")
                 elif kind == "dirstart":
                     _kind, done, total, directory = event
                     self.status.set(f"Reading {done}/{total}: {directory.name}")
                     self._append_log(f"Reading metadata: {directory}")
+                elif kind == "metaprogress":
+                    _kind, directory, completed, total = event
+                    self._update_stage_progress("reading", directory, completed, total)
+                    self.status.set(f"Reading metadata: {directory.name} — {completed} / {total}")
+                    self._append_log(f"[{completed}/{total}] Reading metadata...")
+                elif kind == "analysisprogress":
+                    _kind, directory, completed, total = event
+                    self._update_stage_progress("analyzing", directory, completed, total)
+                    if completed < total:
+                        self.status.set(f"Analyzing metadata: {directory.name} — {completed} / {total}")
+                        self._append_log(f"[{completed}/{total}] Analyzing metadata...")
+                    else:
+                        self.status.set(f"Preparing results: {directory.name}")
                 elif kind == "file":
                     self._append_log(event[1])
                 elif kind == "done":
@@ -274,6 +295,23 @@ class PhotoDateRestoreApp:
             pass
         finally:
             self.root.after(100, self._drain_queue)
+
+    def _update_stage_progress(self, stage: str, directory, completed: int, total: int) -> None:
+        key = (stage, directory)
+        previous_key = getattr(self, "_stage_progress_key", None)
+        previous_completed = getattr(self, "_stage_progress_completed", 0)
+        if key != previous_key:
+            self.progress.stop()
+            self.progress.configure(mode="determinate", maximum=total, value=completed)
+        else:
+            completed = max(completed, previous_completed)
+            self.progress.configure(value=completed)
+        self._stage_progress_key = key
+        self._stage_progress_completed = completed
+
+    def _reset_stage_progress(self) -> None:
+        self._stage_progress_key = None
+        self._stage_progress_completed = 0
 
     def _finish_success(self, rows: list[dict]) -> None:
         settings = self.running_settings
@@ -295,7 +333,6 @@ class PhotoDateRestoreApp:
         if self.quit_when_idle:
             self.root.destroy()
             return
-        messagebox.showinfo("Cancelled" if cancelled else "Completed", "\n".join(lines))
 
     def _finish_error(self, details: str) -> None:
         self.progress.stop()

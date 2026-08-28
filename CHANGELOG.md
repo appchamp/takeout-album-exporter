@@ -16,6 +16,10 @@
 
 - audit report の内部 status は保持したまま、verbose 表示だけを利用者向けの説明へ変更
 - Cancel 時も確定済みの部分結果を保持し、指定時は監査 report を保存
+- ExifTool metadata read をディレクトリ単位の一括読み取りから100件ずつのバッチ読み取りへ変更。判定（TZ_INFERRED 等の sibling offset 推定を含む）は従来通りディレクトリ全体の metadata が揃ってから実行し、結果は変わらない
+- GUI へ metadata read の進捗（`Reading metadata:` → `Analyzing:`）を表示する任意の metadata_progress コールバックを追加（CLI の挙動は不変）
+- Cancel がバッチ境界でも反応するようになり、大きなディレクトリでの Cancel 待ち時間を短縮
+- GUI の正常完了・Cancel 完了時の別ウィンドウ（popup）通知を廃止し、メイン画面のログ・status に一本化（エラー時の dialog は維持）
 
 ### ドキュメント
 
