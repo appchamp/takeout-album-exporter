@@ -82,21 +82,48 @@ def discover_directories(root: Path) -> List[Path]:
 
 
 ProgressCallback = Callable[[int, int, Path], None]
+FileProgressCallback = Callable[[int, dict], None]
+DirectoryStartCallback = Callable[[int, int, Path], None]
 
 
-def run(opts: Options, progress: Optional[ProgressCallback] = None) -> List[dict]:
+def run(opts: Options, progress: Optional[ProgressCallback] = None,
+        file_progress: Optional[FileProgressCallback] = None,
+        directory_start: Optional[DirectoryStartCallback] = None,
+        cancel_event=None) -> List[dict]:
     """Process INPUT and return one audit row per discovered media file.
 
     ``progress``, when given, is notified after each directory is processed
     with ``(completed_count, total_count, directory)``. It cannot affect
     processing: exceptions raised by the callback are suppressed.
+
+    ``file_progress``, when given, is notified as ``(index, row)`` whenever a
+    file row is finalized. ``index`` is a one-based sequential count. It
+    cannot affect processing: exceptions raised by the callback are suppressed.
+
+    ``cancel_event``, when set, stops processing at a safe file or directory
+    boundary and returns the rows finalized so far without raising an exception.
     """
     _validate_options(opts)
     rows: List[dict] = []
     directories = discover_directories(opts.input)
     total = len(directories)
+    file_index = 0
+
+    def _on_row(row: dict) -> None:
+        nonlocal file_index
+        file_index += 1
+        _notify_file_progress(file_progress, file_index, row)
+
     for index, directory in enumerate(directories, start=1):
-        rows.extend(process_directory(directory, opts))
+        if cancel_event is not None and cancel_event.is_set():
+            break
+        _notify_directory_start(directory_start, index, total, directory)
+        kwargs = {}
+        if file_progress is not None:
+            kwargs["on_row"] = _on_row
+        if cancel_event is not None:
+            kwargs["cancel_event"] = cancel_event
+        rows.extend(process_directory(directory, opts, **kwargs))
         _notify_progress(progress, index, total, directory)
     return rows
 
@@ -106,6 +133,24 @@ def _notify_progress(progress, done: int, total: int, directory: Path) -> None:
         return
     try:
         progress(done, total, directory)
+    except Exception:
+        pass
+
+
+def _notify_file_progress(file_progress, index: int, row: dict) -> None:
+    if file_progress is None:
+        return
+    try:
+        file_progress(index, row)
+    except Exception:
+        pass
+
+
+def _notify_directory_start(directory_start, index: int, total: int, directory: Path) -> None:
+    if directory_start is None:
+        return
+    try:
+        directory_start(index, total, directory)
     except Exception:
         pass
 
@@ -128,7 +173,7 @@ def _validate_options(opts: Options) -> None:
         raise ValueError("--move-json destination must be a directory")
 
 
-def process_directory(dir_path: Path, opts: Options) -> List[dict]:
+def process_directory(dir_path: Path, opts: Options, on_row=None, cancel_event=None) -> List[dict]:
     entries = [e for e in os.scandir(dir_path) if e.is_file() and not _is_ignored(e.name)]
     json_entries = [e for e in entries if e.name.lower().endswith(".json")]
     media_entries = [e for e in entries if Path(e.name).suffix.lower() in MEDIA_EXTENSIONS_ALL]
@@ -191,7 +236,12 @@ def process_directory(dir_path: Path, opts: Options) -> List[dict]:
 
     rows = []
     for name, ctx in ctx_by_name.items():
-        rows.append(_build_row(dir_path, opts, ctx, final.get(name)))
+        if cancel_event is not None and cancel_event.is_set():
+            break
+        row = _build_row(dir_path, opts, ctx, final.get(name))
+        rows.append(row)
+        if on_row is not None:
+            on_row(row)
     return rows
 
 

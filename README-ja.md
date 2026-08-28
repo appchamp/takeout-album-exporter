@@ -85,6 +85,10 @@ python -m photo_date_restore \
 
 `--output DIR` は元データを変更せず、`--apply` 時に修復済みコピーを別フォルダへ作成します。元 Takeout を保護したい場合の推奨モードです。詳細な手順、timezone、report、in-place、JSON 退避、エラー対処は [利用マニュアル](docs/ja/usage.md) を参照してください。
 
+### 逐次出力（verbose）
+
+`-v` / `--verbose` を追加すると、dry-run を含め処理したファイルごとに 1 行ずつ利用者向けの説明を表示します。指定しない場合の出力は従来どおり最終集計のみです。詳細な内部 status は監査 report にそのまま残ります。
+
 ## GUI 版（macOS）
 
 Tk を使える Python と ExifTool が必要です。macOS の Homebrew では次のように準備します。ExifTool はアプリに同梱されません。
@@ -101,7 +105,9 @@ photo-date-restore-gui
 python -m photo_date_restore.gui
 ```
 
-`Input folder` と `Output folder` を選び、必要に応じて dry-run、timezone、既存出力の上書き、監査 report（CSV / JSONL）を設定して `Start` を押します。ログでディレクトリごとの進行と結果を確認でき、完了後は `Open Output Folder` で出力先を Finder に表示できます。
+`Input folder` と `Output folder` を選び、既定で有効な Verbose output と dry-run、timezone、既存出力の上書き、監査 report（CSV / JSONL）を設定して `Start` を押します。ログでは dry-run でもファイル単位の利用者向け説明と、読み込み中のディレクトリを確認できます。`Cancel` は現在のファイルを安全に完了してから停止し、確定済みの部分結果と監査 report は保持します。完了後は `Open Output Folder` で出力先を Finder に表示できます。
+
+アプリメニューまたは Help メニューの About では、Version、著作者、MIT License、Project URL を確認できます。
 
 GUI は copy mode 専用です。`--in-place` と `--move-json` は引き続き CLI 専用です。CLI の引数・動作は変更されず、引き続き完全に利用できます。
 

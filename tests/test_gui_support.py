@@ -7,6 +7,7 @@ from photo_date_restore import exiftool_client, pipeline
 from photo_date_restore.cli import build_parser
 from photo_date_restore.gui import support
 from photo_date_restore.gui.support import GuiSettings, GuiValidationError
+from photo_date_restore.report import format_progress_line
 
 
 def test_locate_exiftool_prefers_path(monkeypatch):
@@ -166,3 +167,51 @@ def test_summary_lines_mirror_cli_summary_shape():
         "processed 3 files (dry-run)", "  A: 2", "  Z: 1",
     ]
     assert support.summary_lines(rows, apply=True) == ["processed 3 files", "  A: 2", "  Z: 1"]
+
+
+def test_gui_defaults_are_safe_and_verbose():
+    assert GuiSettings().verbose is True
+    assert GuiSettings().dry_run is True
+
+
+def test_about_lines_match_source_metadata_and_include_project_url(monkeypatch):
+    from photo_date_restore import __version__
+
+    class Metadata:
+        def get_all(self, name):
+            assert name == "Project-URL"
+            return ["Repository, https://github.com/kimipooh/takeout-album-exporter"]
+
+    monkeypatch.setattr("importlib.metadata.version", lambda _name: __version__)
+    monkeypatch.setattr("importlib.metadata.metadata", lambda _name: Metadata())
+    lines = support.about_lines()
+
+    license_lines = (Path(__file__).resolve().parents[1] / "LICENSE").read_text().splitlines()
+    copyright_line = next(line for line in license_lines if line.startswith("Copyright (c)"))
+
+    assert support.app_version() == __version__
+    assert "Photo Date Restore" in lines
+    assert f"Version {__version__}" in lines
+    assert "MIT License" in lines
+    assert copyright_line in lines
+    assert "https://github.com/kimipooh/takeout-album-exporter" in lines
+
+
+def test_format_progress_line_uses_relative_path_then_file():
+    assert format_progress_line(1, {"relative_path": "a/b.jpg", "status": "OK"}) == "[1] a/b.jpg — OK"
+    assert format_progress_line(2, {"file": "fallback.jpg", "status": "NO_CHANGE"}) == (
+        "[2] fallback.jpg — Already up to date; no change needed"
+    )
+
+
+def test_app_version_falls_back_when_metadata_is_unavailable(monkeypatch):
+    from importlib.metadata import PackageNotFoundError
+    from photo_date_restore import __version__
+
+    monkeypatch.setattr("importlib.metadata.version", lambda _name: (_ for _ in ()).throw(PackageNotFoundError))
+
+    assert support.app_version() == __version__
+
+
+def test_cancelled_lines():
+    assert support.cancelled_lines([{}, {}]) == ["Processing cancelled.", "Processed: 2 files"]

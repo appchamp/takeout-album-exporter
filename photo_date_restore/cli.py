@@ -8,7 +8,7 @@ from pathlib import Path
 from . import exiftool_client as et
 from .models import Status
 from .pipeline import Options, run
-from .report import summarize, write_report
+from .report import format_progress_line, summarize, write_report
 from .tz import validate_timezone_name
 
 CONFLICT_STATUSES = {Status.AMBIGUOUS_JSON.value, Status.EXIF_JSON_CONFLICT.value}
@@ -51,6 +51,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--conflict-seconds", type=int, default=60)
     p.add_argument("--tz-tolerance", type=int, default=90)
     p.add_argument("--exiftool", dest="exiftool_path", type=str, default=None)
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="ファイルごとの処理結果を逐次表示する")
     p.add_argument("--version", action="store_true")
     return p
 
@@ -97,8 +99,15 @@ def main(argv=None) -> int:
         move_json=args.move_json,
     )
 
+    file_progress = None
+    if args.verbose:
+        def _file_progress(index, row):
+            print(format_progress_line(index, row))
+
+        file_progress = _file_progress
+
     try:
-        rows = run(opts)
+        rows = run(opts, file_progress=file_progress)
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 3

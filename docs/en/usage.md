@@ -138,8 +138,8 @@ python -m photo_date_restore.gui
 ### 4.2 Use
 
 1. Select the Input and Output folders.
-2. Start with the default `Dry run (analyze only, write nothing)`. Optionally set timezone, output overwrite, and a CSV / JSONL audit report.
-3. Press `Start` and review per-directory progress and results in the log.
+2. Start with the default `Dry run (analyze only, write nothing)` and default-on `Verbose output (show each processed file)`, then set timezone, output overwrite, and a CSV / JSONL audit report.
+3. Press `Start` and review user-facing per-file results, including in dry-run mode, and the directory being read in the log. Detailed internal statuses remain unchanged in the audit report. To stop, press `Cancel`: it safely waits for the current file to finish and preserves completed partial results and their audit report. Use the application menu or Help menu About item to confirm the Version, author, MIT License, and Project URL.
 4. After the completion display, use `Open Output Folder` to open the destination in Finder.
 
 ### 4.3 Build the `.app`
@@ -147,8 +147,11 @@ python -m photo_date_restore.gui
 At the repository root, use the GUI development environment:
 
 ```bash
+./.venv-gui/bin/pip install -e . --no-deps
 ./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
 ```
+
+The `.app` reads its Version and Project URL from the installed package metadata. If you skip the reinstall after changing the version, About shows stale values, so always reinstall before building.
 
 The result is `dist/Photo Date Restore.app`. The launched `.app` does not bundle ExifTool and searches `PATH`, `/opt/homebrew/bin`, then `/usr/local/bin`.
 
@@ -156,7 +159,10 @@ The result is `dist/Photo Date Restore.app`. The launched `.app` does not bundle
 
 - The GUI launches.
 - Input and Output folders can be selected.
-- Dry run, timezone, output overwrite, and audit-report toggles work.
+- Dry run, default-on Verbose output, timezone, output overwrite, and audit-report toggles work.
+- Verbose output shows one user-facing line for each processed file, including during dry-run; internal statuses remain in the report.
+- Cancel waits safely for the current file, then preserves partial results and the report.
+- The application menu or Help menu About item shows the Version, author, MIT License, and Project URL.
 - With ExifTool present, its path appears in the log.
 - With ExifTool absent, startup continues and Start gives a clear failure.
 - Start in dry-run and confirm that no output is created.
@@ -186,10 +192,20 @@ Choose this mode to protect the original Takeout. With apply, media that cannot 
 | `--output DIR` | Write to another directory; mutually exclusive with and preferred over `--in-place` |
 | `--in-place` | Process the input in place; use only on a working copy |
 | `--apply` | Actually copy, write, and move; without it the run is dry |
+| `-v`, `--verbose` | Show one progress line for each processed file |
 | `--timezone NAME` | IANA timezone name, for example `Asia/Tokyo` |
 | `--report PATH` | CSV or JSONL audit report |
 | `--move-json DIR` | Archive successful sidecars; in-place only |
 | `--exiftool PATH` | Select the ExifTool executable |
+
+To show file-by-file progress during a dry run, add `-v` or `--verbose`:
+
+```bash
+python -m photo_date_restore \
+  "/path/to/Google Photos/Album" \
+  --output "./output" \
+  -v
+```
 
 ## 6. Handle timezone safely
 

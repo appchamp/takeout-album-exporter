@@ -1,12 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 from pathlib import Path
 
+from PyInstaller.utils.hooks import copy_metadata
+
 
 a = Analysis(
     [str(Path(SPECPATH).parent / "photo_date_restore/gui/launcher.py")],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=copy_metadata("photo-date-restore"),
     hiddenimports=["photo_date_restore.gui.app"],
     hookspath=[],
     hooksconfig={},

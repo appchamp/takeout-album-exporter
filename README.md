@@ -85,6 +85,10 @@ python -m photo_date_restore \
 
 `--output DIR` leaves the input unchanged and creates repaired copies in another directory when `--apply` is used. It is the recommended mode for protecting an original Takeout. See the [usage guide](docs/en/usage.md) for the full procedure, timezone, reports, in-place mode, JSON archiving, and troubleshooting.
 
+### Verbose output
+
+Add `-v` / `--verbose` to print a user-facing explanation for each processed file, including during a dry run. Without it, the output remains the final summary only. Detailed internal statuses remain unchanged in the audit report.
+
 ## GUI version (macOS)
 
 The GUI requires Python with Tk and ExifTool. On macOS with Homebrew, install them as follows. ExifTool is required and is not bundled with the application.
@@ -101,7 +105,9 @@ photo-date-restore-gui
 python -m photo_date_restore.gui
 ```
 
-Select the Input and Output folders, then optionally set dry run, timezone, output overwrite, and an audit report (CSV / JSONL), and press `Start`. The log shows per-directory progress and results; after completion, `Open Output Folder` opens the destination in Finder.
+Select the Input and Output folders, then set the default-on Verbose output and dry run, timezone, output overwrite, and an audit report (CSV / JSONL), and press `Start`. The log shows user-facing per-file results even in dry-run mode and names the directory being read. `Cancel` safely waits for the current file to finish, preserving completed partial results and their audit report. After completion, `Open Output Folder` opens the destination in Finder.
+
+The About item in the application menu or Help menu shows the Version, author, MIT License, and Project URL.
 
 The GUI is copy mode only. `--in-place` and `--move-json` remain CLI-only. The CLI arguments and behavior are unchanged and remain fully supported.
 

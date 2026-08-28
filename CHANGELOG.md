@@ -1,12 +1,21 @@
 # Changelog
 
-## Unreleased
+## v1.1.0 (2026-08-28)
 
 ### 追加
 
+- CLI `-v` / `--verbose` による利用者向け説明のファイル単位逐次出力（未指定時の出力と終了コードは不変）
+- GUI の既定 ON の Verbose output、cooperative Cancel、処理中の終了確認
+- Version・著作者・MIT License・Project URL を表示する About ダイアログ
 - macOS 向け Tkinter GUI（`photo-date-restore-gui` / `python -m photo_date_restore.gui`）。copy mode 専用で、dry-run・timezone・出力上書き・監査 report を設定できる
 - `Photo Date Restore.app` を再現可能にビルドする PyInstaller の spec。ExifTool は同梱せず外部依存のまま
 - GUI へ進行状況を通知するための、pipeline のディレクトリ単位の任意 progress コールバック（CLI の挙動は不変）
+- GUI へ読み込み開始を通知する、pipeline のディレクトリ単位の任意 directory_start callback（CLI の挙動は不変）
+
+### 変更
+
+- audit report の内部 status は保持したまま、verbose 表示だけを利用者向けの説明へ変更
+- Cancel 時も確定済みの部分結果を保持し、指定時は監査 report を保存
 
 ### ドキュメント
 
