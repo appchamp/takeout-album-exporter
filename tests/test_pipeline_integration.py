@@ -6,6 +6,7 @@ import csv
 import shutil
 from pathlib import Path
 
+import pytest
 import photo_date_restore.pipeline as pipeline_module
 from photo_date_restore.models import Status
 from photo_date_restore.pipeline import Options, run
@@ -30,6 +31,24 @@ def test_dry_run_makes_no_filesystem_changes(tmp_path):
     assert before == after
     assert not out.exists()
     assert len(rows) == 22  # 18 + 4 media files
+
+
+@pytest.mark.parametrize("apply", [False, True])
+@requires_exiftool
+@requires_real_samples
+def test_file_progress_notifies_once_per_finalized_row_in_dry_run_and_apply(tmp_path, apply):
+    src = make_takeout_copy(tmp_path)
+    observed = []
+    rows = run(Options(
+        input=src,
+        output=tmp_path / "out",
+        apply=apply,
+        timezone="Asia/Tokyo",
+    ), file_progress=lambda index, row: observed.append((index, row)))
+
+    assert len(observed) == len(rows) == 22
+    assert [index for index, _row in observed] == list(range(1, 23))
+    assert [row for _index, row in observed] == rows
 
 
 @requires_exiftool

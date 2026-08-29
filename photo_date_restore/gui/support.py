@@ -17,6 +17,11 @@ from ..tz import validate_timezone_name
 
 EXIFTOOL_FALLBACK_PATHS = ("/opt/homebrew/bin/exiftool", "/usr/local/bin/exiftool")
 
+APP_DISPLAY_NAME = "Photo Date Restore"
+APP_AUTHOR = "Kimiya Kitani"
+APP_COPYRIGHT_YEAR = "2026"
+APP_LICENSE = "MIT License"
+
 EXIFTOOL_MISSING_MESSAGE = (
     "ExifTool was not found.\n"
     "\n"
@@ -51,6 +56,49 @@ class GuiSettings:
     write_report: bool = False
     report_path: str = ""
     report_format: str = "csv"
+    verbose: bool = True
+
+
+def app_version() -> str:
+    """Return the installed package version, falling back to the source value."""
+    try:
+        from importlib.metadata import version
+
+        return version("photo-date-restore")
+    except Exception:
+        from .. import __version__
+
+        return __version__
+
+
+def project_url() -> str:
+    """Repository URL from package metadata. Empty when unavailable."""
+    try:
+        from importlib.metadata import metadata
+
+        entries = metadata("photo-date-restore").get_all("Project-URL") or []
+        by_label = {}
+        for entry in entries:
+            label, _, url = entry.partition(",")
+            by_label[label.strip().lower()] = url.strip()
+        return by_label.get("repository") or by_label.get("homepage") or ""
+    except Exception:
+        return ""
+
+
+def about_lines() -> List[str]:
+    """Tkinter-free About text used by the GUI dialog."""
+    lines = [
+        APP_DISPLAY_NAME,
+        f"Version {app_version()}",
+        "",
+        f"Copyright (c) {APP_COPYRIGHT_YEAR} {APP_AUTHOR}",
+        APP_LICENSE,
+    ]
+    url = project_url()
+    if url:
+        lines.extend(["", "Project:", url])
+    return lines
 
 
 class GuiValidationError(Exception):
@@ -137,6 +185,11 @@ def summary_lines(rows: Sequence[dict], apply: bool) -> List[str]:
     lines = [f"processed {len(rows)} files" + ("" if apply else " (dry-run)")]
     lines.extend(f"  {status}: {count}" for status, count in sorted(counts.items()))
     return lines
+
+
+def cancelled_lines(rows: Sequence[dict]) -> List[str]:
+    """Summary block for a cancelled run."""
+    return ["Processing cancelled.", f"Processed: {len(rows)} files"]
 
 
 def open_in_finder(path: Path) -> None:

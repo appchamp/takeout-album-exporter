@@ -45,3 +45,51 @@ def test_pipeline_rejects_invalid_timezone_before_discovery(tmp_path, monkeypatc
 
     with pytest.raises(ValueError, match="invalid IANA timezone"):
         run(Options(input=tmp_path, output=tmp_path / "out", timezone="Not/AZone"))
+
+
+def test_verbose_defaults_to_false_and_accepts_short_and_long_options(tmp_path):
+    parser = build_parser()
+    base = [str(tmp_path), "--output", str(tmp_path / "out")]
+
+    assert parser.parse_args(base).verbose is False
+    assert parser.parse_args(base + ["-v"]).verbose is True
+    assert parser.parse_args(base + ["--verbose"]).verbose is True
+
+
+def test_verbose_off_keeps_summary_only(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(pipeline_module.et, "find_exiftool", lambda _path: "exiftool")
+    monkeypatch.setattr("photo_date_restore.cli.run", lambda _opts, file_progress=None: [
+        {"relative_path": "a/b.jpg", "status": "EXIF_JSON_MATCH"},
+    ])
+
+    assert main([str(tmp_path), "--output", str(tmp_path / "out")]) == 0
+    assert capsys.readouterr().out == "processed 1 files (dry-run)\n  EXIF_JSON_MATCH: 1\n"
+
+
+def test_verbose_prints_rows_and_preserves_summary_and_exit_code(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(pipeline_module.et, "find_exiftool", lambda _path: "exiftool")
+
+    def fake_run(_opts, file_progress=None):
+        row = {"relative_path": "a/b.jpg", "status": "EXIF_JSON_MATCH"}
+        assert file_progress is not None
+        file_progress(1, row)
+        return [row]
+
+    monkeypatch.setattr("photo_date_restore.cli.run", fake_run)
+
+    assert main([str(tmp_path), "--output", str(tmp_path / "out"), "-v"]) == 0
+    assert capsys.readouterr().out == (
+        "[1] a/b.jpg — Existing date matched Google metadata\n"
+        "processed 1 files (dry-run)\n"
+        "  EXIF_JSON_MATCH: 1\n"
+    )
+
+
+def test_version_is_1_1_0(tmp_path, capsys):
+    assert main([str(tmp_path), "--output", str(tmp_path / "out"), "--version"]) == 0
+    assert capsys.readouterr().out == "photo-date-restore 1.1.0\n"
+
+
+def test_version_alone_needs_no_other_arguments(capsys):
+    assert main(["--version"]) == 0
+    assert capsys.readouterr().out == "photo-date-restore 1.1.0\n"

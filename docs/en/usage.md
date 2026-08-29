@@ -124,45 +124,22 @@ The GUI is a screen for the existing CLI copy mode. CLI arguments and behavior a
 
 ### 4.1 Requirements and launch
 
-Python 3.14 with Tk and ExifTool are required. ExifTool is not bundled in the `.app`.
+To use the distributed `Photo Date Restore.app`, only ExifTool is required. The `.app` includes the Python/Tk runtime, so Python, Tk, and PyInstaller are not required. ExifTool is not bundled in the `.app`.
 
 ```bash
-brew install python-tk@3.14
 brew install exiftool
-
-photo-date-restore-gui
-# or
-python -m photo_date_restore.gui
 ```
+
+Download the Apple Silicon ZIP from [GitHub Releases](https://github.com/kimipooh/takeout-album-exporter/releases), extract it, and open `Photo Date Restore.app`. The distribution is unsigned and not notarized, so macOS may require you to allow the first launch.
 
 ### 4.2 Use
 
 1. Select the Input and Output folders.
-2. Start with the default `Dry run (analyze only, write nothing)`. Optionally set timezone, output overwrite, and a CSV / JSONL audit report.
-3. Press `Start` and review per-directory progress and results in the log.
-4. After the completion display, use `Open Output Folder` to open the destination in Finder.
+2. Start with the default `Dry run (analyze only, write nothing)` and default-on `Verbose output (show each processed file)`, then set timezone, output overwrite, and a CSV / JSONL audit report.
+3. Press `Start`. ExifTool metadata is read in batches of up to 50 files per directory, so the log first shows reading progress (`Reading metadata: <dir>`, then `[50/1896] Reading metadata...` per batch) before switching to `Analyzing: <dir>` and the user-facing per-file results, including in dry-run mode. Detailed internal statuses remain unchanged in the audit report. To stop, press `Cancel`: it reacts at the next batch boundary — typically within one batch of metadata reads, or after the current file being written — and preserves completed partial results and their audit report. Use the application menu or Help menu About item to confirm the Version, author, MIT License, and Project URL.
+4. The log shows the completion or cancellation summary directly in the main window (no separate popup). Then use `Open Output Folder` to open the destination in Finder.
 
-### 4.3 Build the `.app`
-
-At the repository root, use the GUI development environment:
-
-```bash
-./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
-```
-
-The result is `dist/Photo Date Restore.app`. The launched `.app` does not bundle ExifTool and searches `PATH`, `/opt/homebrew/bin`, then `/usr/local/bin`.
-
-### 4.4 Manual GUI test checklist
-
-- The GUI launches.
-- Input and Output folders can be selected.
-- Dry run, timezone, output overwrite, and audit-report toggles work.
-- With ExifTool present, its path appears in the log.
-- With ExifTool absent, startup continues and Start gives a clear failure.
-- Start in dry-run and confirm that no output is created.
-- Start with apply and confirm copy-mode output.
-- After invalid input, recover from the error and start again.
-- After success, `Open Output Folder` is enabled and opens Finder.
+For building the GUI from source, see the [development guide](development.md). For creating and verifying the distribution ZIP and for pre-release testing, see the [release procedure](release.md).
 
 ## 5. `--output` and dry run / apply
 
@@ -186,10 +163,20 @@ Choose this mode to protect the original Takeout. With apply, media that cannot 
 | `--output DIR` | Write to another directory; mutually exclusive with and preferred over `--in-place` |
 | `--in-place` | Process the input in place; use only on a working copy |
 | `--apply` | Actually copy, write, and move; without it the run is dry |
+| `-v`, `--verbose` | Show one progress line for each processed file |
 | `--timezone NAME` | IANA timezone name, for example `Asia/Tokyo` |
 | `--report PATH` | CSV or JSONL audit report |
 | `--move-json DIR` | Archive successful sidecars; in-place only |
 | `--exiftool PATH` | Select the ExifTool executable |
+
+To show file-by-file progress during a dry run, add `-v` or `--verbose`:
+
+```bash
+python -m photo_date_restore \
+  "/path/to/Google Photos/Album" \
+  --output "./output" \
+  -v
+```
 
 ## 6. Handle timezone safely
 

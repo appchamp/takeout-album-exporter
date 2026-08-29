@@ -124,45 +124,22 @@ GUI は既存 CLI の copy mode を操作するための画面です。CLI の�
 
 ### 4.1 必要なものと起動
 
-Python 3.14 用 Tk と ExifTool が必要です。ExifTool は `.app` に同梱されません。
+配布済みの `Photo Date Restore.app` を利用する場合に必要なのは ExifTool だけです。Python/Tk runtime は `.app` に同梱されているため、Python、Tk、PyInstaller の導入は不要です。ExifTool は `.app` に同梱されません。
 
 ```bash
-brew install python-tk@3.14
 brew install exiftool
-
-photo-date-restore-gui
-# または
-python -m photo_date_restore.gui
 ```
+
+Apple Silicon 向け ZIP を [GitHub Release](https://github.com/kimipooh/takeout-album-exporter/releases) から取得して展開し、`Photo Date Restore.app` を起動してください。署名・公証を行っていないため（unsigned / not notarized）、初回起動時に macOS の許可操作が必要になる場合があります。
 
 ### 4.2 使い方
 
 1. `Input folder` と `Output folder` を選びます。
-2. 既定の `Dry run (analyze only, write nothing)` のまま最初に確認します。必要に応じて timezone、既存出力の上書き、CSV / JSONL の監査 report を設定します。
-3. `Start` を押し、ログのディレクトリごとの進行と結果を確認します。
-4. 完了表示後、`Open Output Folder` で出力先を Finder に開けます。
+2. 既定の `Dry run (analyze only, write nothing)` と、既定で有効な `Verbose output (show each processed file)` のまま最初に確認します。timezone、既存出力の上書き、CSV / JSONL の監査 report を設定します。
+3. `Start` を押します。ExifTool の metadata read はディレクトリごとに最大50件ずつのバッチで行われるため、ログにはまず読み込み進捗（`Reading metadata: <dir>`、バッチごとの `[50/1896] Reading metadata...`）が表示され、その後 `Analyzing: <dir>` に切り替わってから dry-run を含むファイル単位の利用者向け説明が表示されます。詳細な内部 status は監査 report にそのまま残ります。途中で止めるときは `Cancel` を押します。次のバッチ境界（metadata read は概ね1バッチ以内）または書き込み中の現在のファイルの完了後に反応し、確定済みの部分結果と監査 report は保持されます。アプリメニューまたは Help メニューの About から Version、著作者、MIT License、Project URL を確認できます。
+4. 完了・キャンセルの結果はメイン画面のログにそのまま表示されます（別ウィンドウは出ません）。続けて `Open Output Folder` で出力先を Finder に開けます。
 
-### 4.3 `.app` のビルド
-
-リポジトリのルートで GUI 開発用環境を使います。
-
-```bash
-./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
-```
-
-生成物は `dist/Photo Date Restore.app` です。起動した `.app` は ExifTool を同梱せず、`PATH`、`/opt/homebrew/bin`、`/usr/local/bin` を順に検索します。
-
-### 4.4 手動 GUI テストチェックリスト
-
-- GUI を起動できる
-- Input / Output folder を選択できる
-- dry-run、timezone、出力上書き、監査 report の各切替を確認できる
-- ExifTool がある場合にパスがログへ表示される
-- ExifTool がない場合に起動は継続し、Start 時に分かりやすく失敗する
-- dry-run で Start して出力を作成しない
-- apply で Start して copy mode の出力を確認する
-- 不正な入力後もエラー表示から Start を再試行できる
-- 成功後に `Open Output Folder` が有効になり Finder を開く
+ソースから GUI をビルドする場合は [開発者向けドキュメント](development.md) を、配布 ZIP の作成・検証やリリース前テストは [リリース手順](release.md) を参照してください。
 
 ## 5. `--output` と dry-run / apply
 
@@ -188,10 +165,20 @@ python -m photo_date_restore INPUT (--output DIR | --in-place) [OPTIONS]
 | `--output DIR` | 別フォルダへ出力。`--in-place` と排他、推奨 |
 | `--in-place` | 入力をその場で処理。作業コピーだけで使用 |
 | `--apply` | 実際にコピー・書込み・移動を実行。未指定は dry-run |
+| `-v`, `--verbose` | 処理したファイルごとに逐次行を表示 |
 | `--timezone NAME` | IANA timezone 名（例 `Asia/Tokyo`） |
 | `--report PATH` | CSV または JSONL の監査 report |
 | `--move-json DIR` | 成功 sidecar を退避（`--in-place` 専用） |
 | `--exiftool PATH` | ExifTool の実行ファイルを明示 |
+
+dry-run 中にファイル単位の進行を表示するには、`-v` または `--verbose` を追加します。
+
+```bash
+python -m photo_date_restore \
+  "/path/to/Google Photos/Album" \
+  --output "./output" \
+  -v
+```
 
 ## 6. timezone を安全に扱う
 
