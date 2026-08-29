@@ -15,6 +15,12 @@ __pycache__/
 build/
 dist/
 
+# Release artifacts (attached to GitHub Release, never committed)
+/Photo-Date-Restore-*.zip
+
+# Local scratch data
+scratchpad/
+
 # Test / lint / coverage
 .pytest_cache/
 .mypy_cache/

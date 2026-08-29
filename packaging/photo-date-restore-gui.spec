@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 from PyInstaller.utils.hooks import copy_metadata
@@ -39,6 +40,10 @@ coll = COLLECT(
     upx=True,
     name="Photo Date Restore",
 )
+# Single-sourced from the installed package metadata, so the bundle version
+# never drifts from pyproject.toml / photo_date_restore.__version__.
+_app_version = _pkg_version("photo-date-restore")
+
 app = BUNDLE(
     coll,
     name="Photo Date Restore.app",
@@ -47,5 +52,8 @@ app = BUNDLE(
     info_plist={
         "NSHighResolutionCapable": True,
         "LSMinimumSystemVersion": "11.0",
+        "CFBundleShortVersionString": _app_version,
+        "CFBundleVersion": _app_version,
+        "NSHumanReadableCopyright": "Copyright (c) 2026 Kimiya Kitani. MIT License.",
     },
 )
