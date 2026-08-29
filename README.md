@@ -4,10 +4,23 @@ Japanese: [README-ja.md](README-ja.md)
 
 Version 1.1.0 / MIT License / <https://github.com/kimipooh/takeout-album-exporter>
 
-`photo-date-restore` tool is a safety-oriented Python CLI for matching media from a Google Photos Takeout export with sidecar JSON, then restoring missing capture timestamps and filesystem `mtime`. It prioritizes trustworthy existing EXIF/XMP capture metadata and uses JSON `photoTakenTime` only when needed.
+This safety-oriented Python CLI restores and adjusts missing capture timestamps and filesystem `mtime` for photos and videos exported from Google Photos Takeout. It uses Google JSON metadata alongside existing EXIF/XMP metadata. An Apple Silicon build of `Photo Date Restore.app` provides the same workflow through a macOS GUI.
+
+[Use the macOS GUI](#gui-version-macos) | [Use the CLI](#quick-start)
 
 - Detailed guide: [docs/en/usage.md](docs/en/usage.md) (translated from the canonical Japanese [docs/ja/usage.md](docs/ja/usage.md))
+- Build the GUI from source: [docs/en/development.md](docs/en/development.md)
+- Maintainer release procedure: [docs/en/release.md](docs/en/release.md)
 - Design and safety specification: [docs/en/design.md](docs/en/design.md)
+
+## How to use the app version (macOS Apple Silicon)
+
+1. Download the Apple Silicon ZIP from [GitHub Releases](https://github.com/kimipooh/takeout-album-exporter/releases).
+2. Extract the ZIP.
+3. Install ExifTool: `brew install exiftool`
+4. Open `Photo Date Restore.app` and begin with a dry run.
+
+The distributed `.app` includes the Python/Tk runtime, so end users do not need to install Python, Tk, or PyInstaller. See the [GUI section](#gui-version-macos) and [usage guide](docs/en/usage.md) for details.
 
 ## Overview
 
@@ -31,49 +44,47 @@ The tool uniquely matches JSON in the same directory. It does not overwrite a tr
 - ExifTool-based metadata read/write with read-back verification
 - macOS GUI (distributed as a `.app`), Cancel during a run, and an About dialog
 
-## Installation (macOS example)
+## Required and recommended software by workflow
 
-Run the following **at the repository root**. Replace `/path/to/takeout-photo-date-restorer` with the location of this repository.
+### Using the macOS GUI
+
+- **Required:** ExifTool only
+- **Not required:** Python, Tk, or PyInstaller; the distributed `.app` includes the Python/Tk runtime
+- **Recommended:** Download the Apple Silicon ZIP from GitHub Releases and install ExifTool through Homebrew
+
+### Using the CLI
+
+- **Required:** Python 3.9 or later and ExifTool
+- **Recommended:** a Python virtual environment and a package manager such as Homebrew
+- See the [usage guide](docs/en/usage.md) for options, the safe workflow, and troubleshooting.
+
+### Building the GUI from source
+
+This is a developer workflow and needs Python 3.14 with Tk, PyInstaller, and a GUI virtual environment. See the [development guide](docs/en/development.md), rather than treating those as requirements for the distributed app.
+
+## Homebrew and ExifTool
+
+ExifTool is an external dependency for both the GUI and CLI and is not bundled in the `.app`. Homebrew is not required, but is a recommended package manager for macOS. If it is not installed, see the [official Homebrew site](https://brew.sh/).
 
 ```bash
-cd /path/to/takeout-photo-date-restorer
-
-python3 --version
-python3 -m venv .venv
-source .venv/bin/activate
-
-python --version
-which python
-
 brew install exiftool
 exiftool -ver
-
-python -m pip install -e .
-python -m photo_date_restore --help
 ```
 
-`pyproject.toml` requires Python **3.9 or later**. Without activating the virtual environment, you can still run `.venv/bin/python -m photo_date_restore` from the repository root.
-
-`photo-date-restore` is a shorthand available only when the installed console script is reachable from the current `PATH`. This guide uses `python -m photo_date_restore` as the primary, environment-independent form.
-
-Without ExifTool, the CLI stops before processing. On macOS, install it with `brew install exiftool` as shown above.
+The GUI looks briefly for ExifTool on `PATH`, `/opt/homebrew/bin`, and `/usr/local/bin`. It still opens when ExifTool is absent, then gives installation guidance when you press `Start`.
 
 ## Quick Start
 
-Copy this and replace only the paths.
+This is the shortest CLI path. Run these commands **at the repository root**.
 
 ```bash
 cd /path/to/takeout-photo-date-restorer
-
 python3 -m venv .venv
 source .venv/bin/activate
-
 python -m pip install -e .
 ```
 
 ### Test run (dry-run)
-
-First, review what would happen without changing any files.
 
 ```bash
 python -m photo_date_restore \
@@ -82,11 +93,11 @@ python -m photo_date_restore \
   --report "./report.csv"
 ```
 
-At this stage, no photos are copied, and no EXIF or `mtime` changes are made. Review the report.
+No photos are copied and no EXIF or `mtime` changes are made. Review the report.
 
 ### Actual run
 
-Review the dry-run report, and if it looks correct, add `--apply`.
+After reviewing the dry-run report, add `--apply`.
 
 ```bash
 python -m photo_date_restore \
@@ -96,84 +107,21 @@ python -m photo_date_restore \
   --apply
 ```
 
-`--output DIR` leaves the input unchanged and creates repaired copies in another directory when `--apply` is used. It is the recommended mode for protecting an original Takeout. See the [usage guide](docs/en/usage.md) for the full procedure, timezone, reports, in-place mode, JSON archiving, and troubleshooting.
+`--output DIR` leaves the input unchanged and creates repaired copies in another directory when used with `--apply`. See the [usage guide](docs/en/usage.md) for the complete workflow.
 
-### Verbose output
+### Verbose output and audit reports
 
-Add `-v` / `--verbose` to print a user-facing explanation for each processed file, including during a dry run. Without it, the output remains the final summary only.
-
-### Audit report
-
-Use `--report` to save a CSV / JSONL audit report. The report records the internal statuses (`EXIF_JSON_MATCH_TZ_GPS`, `JSON_TIME_MTIME_ONLY`, and so on) exactly as produced. The verbose display is a user-facing rewording and is a separate thing from the report's internal statuses. Use the report when you need to verify results afterwards.
+Add `-v` / `--verbose` to print a user-facing explanation for each processed file, including during a dry run. `--report` saves a CSV / JSONL audit report containing the unchanged internal statuses.
 
 ## GUI version (macOS)
 
-The GUI requires Python with Tk and ExifTool. On macOS with Homebrew, install them as follows. ExifTool is required and is not bundled with the application.
+To use the distributed `Photo Date Restore.app`, install only ExifTool. Download the ZIP from [GitHub Releases](https://github.com/kimipooh/takeout-album-exporter/releases), extract it, and open `Photo Date Restore.app`; Python/Tk is not needed.
 
-```bash
-brew install python-tk@3.14
-brew install exiftool
-```
+The `.app` is unsigned and not notarized. If macOS warns on first launch, allow it in System Settings > Privacy & Security.
 
-After installing the package, launch it with either command:
+The GUI is copy mode only. Select Input and Output folders, keep the default-on dry run and Verbose output for the first pass, configure timezone, overwrite, and an audit report, then press `Start`. `Cancel` takes effect at the next metadata-read batch boundary or after the file currently being written, preserving partial results and the audit report. See [the GUI chapter of the usage guide](docs/en/usage.md#4-gui-version-macos) for details.
 
-```bash
-photo-date-restore-gui
-python -m photo_date_restore.gui
-```
-
-The window offers the following controls:
-
-- `Input folder` / `Output folder`
-- `Dry run (analyze only, write nothing)` — **on by default**
-- `Verbose output (show each processed file)` — **on by default**
-- `Overwrite existing files in output folder`
-- Save an audit report (CSV / JSONL)
-- `Start` / `Cancel`
-- `Open Output Folder`
-
-Select the Input and Output folders, then set the default-on Verbose output and dry run, timezone, output overwrite, and an audit report (CSV / JSONL), and press `Start`. ExifTool metadata is read in batches of up to 100 files per directory, so the log shows reading progress (`[100/1896] Reading metadata...`) before switching to `Analyzing:` and the user-facing per-file results, even in dry-run mode. `Cancel` reacts at the next batch boundary — typically within one batch of metadata reads, or after the current file being written — preserving completed partial results and their audit report. After completion, the log shows the summary directly in the main window (no separate popup); `Open Output Folder` opens the destination in Finder.
-
-The About item in the application menu or Help menu shows the Version, author, MIT License, and Project URL.
-
-The GUI is copy mode only. `--in-place` and `--move-json` remain CLI-only. The CLI arguments and behavior are unchanged and remain fully supported.
-
-### ExifTool (external dependency)
-
-ExifTool is an external dependency and is not bundled in the `.app`. Install it separately, for example with Homebrew:
-
-```bash
-brew install exiftool
-```
-
-At startup the application detects ExifTool in this order:
-
-1. `exiftool` on `PATH`
-2. `/opt/homebrew/bin/exiftool` (Apple Silicon Homebrew)
-3. `/usr/local/bin/exiftool` (Intel Homebrew)
-
-If none is found the GUI still launches and stops at `Start` with installation guidance.
-
-### Download the macOS app (.app)
-
-A prebuilt ZIP for Apple Silicon is attached to the GitHub Release:
-
-`Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip`
-
-This `.app` is unsigned and not notarized. macOS may show a security warning the first time you open it; if so, allow it from System Settings > Privacy & Security. ExifTool must be installed separately.
-
-### Build the `.app`
-
-From the repository root, use the GUI development `.venv-gui`:
-
-```bash
-./.venv-gui/bin/pip install -e . --no-deps
-./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
-```
-
-The result is `dist/Photo Date Restore.app`. `dist/` is generated output and is not tracked by Git.
-
-For how to build the release ZIP and compute its checksums, see "4.4 Building and verifying the release ZIP" in [docs/en/usage.md](docs/en/usage.md).
+For launching or building the GUI from source, see the [development guide](docs/en/development.md).
 
 ## Safety notes
 
@@ -181,30 +129,6 @@ For how to build the release ZIP and compute its checksums, see "4.4 Building an
 - Do not begin by running `--in-place --apply` against the original Google Takeout. `--in-place` is for a backed-up working copy.
 - Use `--timezone Asia/Tokyo` only for an album known to have been captured in Japan. Do not apply it without evidence to a whole Takeout that might include overseas photos.
 - `--move-json` is for advanced use. It archives successful sidecars; it does not delete JSON.
-
-## Representative examples
-
-The development samples are read-only. Never run `--in-place --apply` against `sources/Takeout`.
-
-```bash
-python -m photo_date_restore \
-  "sources/Takeout/Google フォト/Album A" \
-  --output "./test-output/group-photo" \
-  --report "./reports/group-photo.csv"
-```
-
-When the timezone cannot be determined, `JSON_TIME_MTIME_ONLY` restores only `mtime` and does not write capture-time metadata. Use the detailed guide's `--timezone Asia/Tokyo --apply` example only when capture in Japan is confirmed.
-
-```bash
-python -m photo_date_restore \
-  "sources/Takeout/Google フォト/Album B" \
-  --output "./test-output/library-fair" \
-  --report "./reports/library-fair.csv"
-```
-
-`EXIF_JSON_MATCH_TZ_GPS` means existing metadata and JSON agree with GPS-based timezone evidence; `EXIF_JSON_MATCH_TZ_INFERRED` means they agree using same-directory evidence. Existing EXIF/XMP is not overwritten.
-
-For details, see [docs/en/usage.md](docs/en/usage.md).
 
 ## Author
 

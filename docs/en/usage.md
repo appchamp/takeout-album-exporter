@@ -124,88 +124,22 @@ The GUI is a screen for the existing CLI copy mode. CLI arguments and behavior a
 
 ### 4.1 Requirements and launch
 
-Python 3.14 with Tk and ExifTool are required. ExifTool is not bundled in the `.app`.
+To use the distributed `Photo Date Restore.app`, only ExifTool is required. The `.app` includes the Python/Tk runtime, so Python, Tk, and PyInstaller are not required. ExifTool is not bundled in the `.app`.
 
 ```bash
-brew install python-tk@3.14
 brew install exiftool
-
-photo-date-restore-gui
-# or
-python -m photo_date_restore.gui
 ```
+
+Download the Apple Silicon ZIP from [GitHub Releases](https://github.com/kimipooh/takeout-album-exporter/releases), extract it, and open `Photo Date Restore.app`. The distribution is unsigned and not notarized, so macOS may require you to allow the first launch.
 
 ### 4.2 Use
 
 1. Select the Input and Output folders.
 2. Start with the default `Dry run (analyze only, write nothing)` and default-on `Verbose output (show each processed file)`, then set timezone, output overwrite, and a CSV / JSONL audit report.
-3. Press `Start`. ExifTool metadata is read in batches of up to 100 files per directory, so the log first shows reading progress (`Reading metadata: <dir>`, then `[100/1896] Reading metadata...` per batch) before switching to `Analyzing: <dir>` and the user-facing per-file results, including in dry-run mode. Detailed internal statuses remain unchanged in the audit report. To stop, press `Cancel`: it reacts at the next batch boundary — typically within one batch of metadata reads, or after the current file being written — and preserves completed partial results and their audit report. Use the application menu or Help menu About item to confirm the Version, author, MIT License, and Project URL.
+3. Press `Start`. ExifTool metadata is read in batches of up to 50 files per directory, so the log first shows reading progress (`Reading metadata: <dir>`, then `[50/1896] Reading metadata...` per batch) before switching to `Analyzing: <dir>` and the user-facing per-file results, including in dry-run mode. Detailed internal statuses remain unchanged in the audit report. To stop, press `Cancel`: it reacts at the next batch boundary — typically within one batch of metadata reads, or after the current file being written — and preserves completed partial results and their audit report. Use the application menu or Help menu About item to confirm the Version, author, MIT License, and Project URL.
 4. The log shows the completion or cancellation summary directly in the main window (no separate popup). Then use `Open Output Folder` to open the destination in Finder.
 
-### 4.3 Build the `.app`
-
-At the repository root, use the GUI development environment:
-
-```bash
-./.venv-gui/bin/pip install -e . --no-deps
-./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
-```
-
-The `.app` reads its Version and Project URL from the installed package metadata. If you skip the reinstall after changing the version, About shows stale values, so always reinstall before building.
-
-The result is `dist/Photo Date Restore.app`. The launched `.app` does not bundle ExifTool and searches `PATH`, `/opt/homebrew/bin`, then `/usr/local/bin`.
-
-The reinstall affects not only the About display but also the `.app` bundle version (`CFBundleShortVersionString` / `CFBundleVersion`). The spec reads those from the installed package metadata, so always reinstall before building after a version change.
-
-### 4.4 Building and verifying the release ZIP
-
-`dist/` is PyInstaller output and the release ZIP is a distribution artifact; neither is tracked by Git (both are excluded in `.gitignore`). Build the ZIP at the repository root and attach it to the GitHub Release without committing it.
-
-Use macOS `ditto` to build the ZIP. Do not use the `zip` command, which can drop extended attributes.
-
-```bash
-ditto -c -k --sequesterRsrc --keepParent \
-  "dist/Photo Date Restore.app" \
-  "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip"
-```
-
-Extract the ZIP and confirm that the `.app` launches.
-
-```bash
-mkdir -p /tmp/photo-date-restore-test
-
-ditto -x -k \
-  "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip" \
-  /tmp/photo-date-restore-test
-```
-
-Compute the checksums and record them in the Release notes. SHA-256 is the primary integrity value; MD5 is a supplementary cross-check.
-
-```bash
-shasum -a 256 "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip"
-md5 "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip"
-```
-
-The hashes change with every build, so keep them in the Release notes only; do not embed them in the README or this guide.
-
-The distribution targets Apple Silicon (arm64). It is unsigned and not notarized, so users may need to allow the first launch themselves.
-
-### 4.5 Manual GUI test checklist
-
-- The GUI launches.
-- Input and Output folders can be selected.
-- Dry run, default-on Verbose output, timezone, output overwrite, and audit-report toggles work.
-- Verbose output shows one user-facing line for each processed file, including during dry-run; internal statuses remain in the report.
-- For a large directory, metadata-read progress (`Reading metadata:` → `Analyzing:`) is shown and never goes silent for long.
-- Cancel reacts at the next batch boundary (typically within one metadata-read batch) or after the current file, then preserves partial results and the report.
-- No separate popup window appears on normal completion or after Cancel.
-- The application menu or Help menu About item shows the Version, author, MIT License, and Project URL.
-- With ExifTool present, its path appears in the log.
-- With ExifTool absent, startup continues and Start gives a clear failure.
-- Start in dry-run and confirm that no output is created.
-- Start with apply and confirm copy-mode output.
-- After invalid input, recover from the error and start again.
-- After success, `Open Output Folder` is enabled and opens Finder.
+For building the GUI from source, see the [development guide](development.md). For creating and verifying the distribution ZIP and for pre-release testing, see the [release procedure](release.md).
 
 ## 5. `--output` and dry run / apply
 
