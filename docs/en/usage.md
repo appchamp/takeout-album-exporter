@@ -155,7 +155,42 @@ The `.app` reads its Version and Project URL from the installed package metadata
 
 The result is `dist/Photo Date Restore.app`. The launched `.app` does not bundle ExifTool and searches `PATH`, `/opt/homebrew/bin`, then `/usr/local/bin`.
 
-### 4.4 Manual GUI test checklist
+The reinstall affects not only the About display but also the `.app` bundle version (`CFBundleShortVersionString` / `CFBundleVersion`). The spec reads those from the installed package metadata, so always reinstall before building after a version change.
+
+### 4.4 Building and verifying the release ZIP
+
+`dist/` is PyInstaller output and the release ZIP is a distribution artifact; neither is tracked by Git (both are excluded in `.gitignore`). Build the ZIP at the repository root and attach it to the GitHub Release without committing it.
+
+Use macOS `ditto` to build the ZIP. Do not use the `zip` command, which can drop extended attributes.
+
+```bash
+ditto -c -k --sequesterRsrc --keepParent \
+  "dist/Photo Date Restore.app" \
+  "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip"
+```
+
+Extract the ZIP and confirm that the `.app` launches.
+
+```bash
+mkdir -p /tmp/photo-date-restore-test
+
+ditto -x -k \
+  "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip" \
+  /tmp/photo-date-restore-test
+```
+
+Compute the checksums and record them in the Release notes. SHA-256 is the primary integrity value; MD5 is a supplementary cross-check.
+
+```bash
+shasum -a 256 "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip"
+md5 "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip"
+```
+
+The hashes change with every build, so keep them in the Release notes only; do not embed them in the README or this guide.
+
+The distribution targets Apple Silicon (arm64). It is unsigned and not notarized, so users may need to allow the first launch themselves.
+
+### 4.5 Manual GUI test checklist
 
 - The GUI launches.
 - Input and Output folders can be selected.

@@ -155,7 +155,42 @@ python -m photo_date_restore.gui
 
 生成物は `dist/Photo Date Restore.app` です。起動した `.app` は ExifTool を同梱せず、`PATH`、`/opt/homebrew/bin`、`/usr/local/bin` を順に検索します。
 
-### 4.4 手動 GUI テストチェックリスト
+再インストールは About の表示だけでなく、`.app` の bundle version（`CFBundleShortVersionString` / `CFBundleVersion`）にも効きます。これらは spec がインストール済み package metadata から読み取るため、version を変更したらビルド前に必ず再インストールしてください。
+
+### 4.4 Release 用 ZIP の作成と検証
+
+`dist/` は PyInstaller の生成物、Release 用 ZIP は配布物であり、いずれも Git 管理対象外です（`.gitignore` で除外済み）。ZIP はリポジトリのルートに作成し、commit せずに GitHub Release へ添付します。
+
+ZIP の作成には macOS の `ditto` を使います。`zip` コマンドは拡張属性を落とすことがあるため使いません。
+
+```bash
+ditto -c -k --sequesterRsrc --keepParent \
+  "dist/Photo Date Restore.app" \
+  "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip"
+```
+
+作成した ZIP は、展開して `.app` が起動することを確認します。
+
+```bash
+mkdir -p /tmp/photo-date-restore-test
+
+ditto -x -k \
+  "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip" \
+  /tmp/photo-date-restore-test
+```
+
+チェックサムを算出し、Release の説明へ記載します。SHA-256 を主たる整合性確認値とし、MD5 は補助的な照合値として扱います。
+
+```bash
+shasum -a 256 "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip"
+md5 "Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip"
+```
+
+ハッシュ値はビルドのたびに変わるため、README やこのマニュアルへ埋め込まず、Release の説明にだけ記載します。
+
+配布物は Apple Silicon（arm64）向けです。署名・公証を行っていないため（unsigned / not notarized）、利用者側で初回起動を許可する操作が必要になる場合があります。
+
+### 4.5 手動 GUI テストチェックリスト
 
 - GUI を起動できる
 - Input / Output folder を選択できる

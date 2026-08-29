@@ -2,10 +2,12 @@
 
 Japanese: [README-ja.md](README-ja.md)
 
+Version 1.1.0 / MIT License / <https://github.com/kimipooh/takeout-album-exporter>
+
 `photo-date-restore` tool is a safety-oriented Python CLI for matching media from a Google Photos Takeout export with sidecar JSON, then restoring missing capture timestamps and filesystem `mtime`. It prioritizes trustworthy existing EXIF/XMP capture metadata and uses JSON `photoTakenTime` only when needed.
 
-- Detailed guide (canonical Japanese source): [docs/en/usage.md](docs/en/usage.md)
-- Design and safety specification: [docs/ja/design.md](docs/ja/design.md)
+- Detailed guide: [docs/en/usage.md](docs/en/usage.md) (translated from the canonical Japanese [docs/ja/usage.md](docs/ja/usage.md))
+- Design and safety specification: [docs/en/design.md](docs/en/design.md)
 
 ## Overview
 
@@ -17,6 +19,17 @@ photo.jpg.supplemental-metadata.json
 ```
 
 The tool uniquely matches JSON in the same directory. It does not overwrite a trustworthy existing capture time, does not guess `DateTimeOriginal` when evidence is insufficient, and never uses JSON `creationTime` as capture time.
+
+## Features
+
+- Restores capture datetime and filesystem `mtime` for Google Photos images and videos by matching sidecar JSON against existing EXIF/XMP
+- Dry run by default; writes only when `--apply` is given explicitly
+- Copy mode first, leaving the original data untouched (the GUI is copy mode only)
+- Verbose output with a user-facing explanation for each processed file
+- Audit report (CSV / JSONL) recording the internal statuses
+- Safety-first timezone handling that uses only evidence-backed timezones
+- ExifTool-based metadata read/write with read-back verification
+- macOS GUI (distributed as a `.app`), Cancel during a run, and an About dialog
 
 ## Installation (macOS example)
 
@@ -87,7 +100,11 @@ python -m photo_date_restore \
 
 ### Verbose output
 
-Add `-v` / `--verbose` to print a user-facing explanation for each processed file, including during a dry run. Without it, the output remains the final summary only. Detailed internal statuses remain unchanged in the audit report.
+Add `-v` / `--verbose` to print a user-facing explanation for each processed file, including during a dry run. Without it, the output remains the final summary only.
+
+### Audit report
+
+Use `--report` to save a CSV / JSONL audit report. The report records the internal statuses (`EXIF_JSON_MATCH_TZ_GPS`, `JSON_TIME_MTIME_ONLY`, and so on) exactly as produced. The verbose display is a user-facing rewording and is a separate thing from the report's internal statuses. Use the report when you need to verify results afterwards.
 
 ## GUI version (macOS)
 
@@ -105,21 +122,58 @@ photo-date-restore-gui
 python -m photo_date_restore.gui
 ```
 
+The window offers the following controls:
+
+- `Input folder` / `Output folder`
+- `Dry run (analyze only, write nothing)` — **on by default**
+- `Verbose output (show each processed file)` — **on by default**
+- `Overwrite existing files in output folder`
+- Save an audit report (CSV / JSONL)
+- `Start` / `Cancel`
+- `Open Output Folder`
+
 Select the Input and Output folders, then set the default-on Verbose output and dry run, timezone, output overwrite, and an audit report (CSV / JSONL), and press `Start`. ExifTool metadata is read in batches of up to 100 files per directory, so the log shows reading progress (`[100/1896] Reading metadata...`) before switching to `Analyzing:` and the user-facing per-file results, even in dry-run mode. `Cancel` reacts at the next batch boundary — typically within one batch of metadata reads, or after the current file being written — preserving completed partial results and their audit report. After completion, the log shows the summary directly in the main window (no separate popup); `Open Output Folder` opens the destination in Finder.
 
 The About item in the application menu or Help menu shows the Version, author, MIT License, and Project URL.
 
 The GUI is copy mode only. `--in-place` and `--move-json` remain CLI-only. The CLI arguments and behavior are unchanged and remain fully supported.
 
+### ExifTool (external dependency)
+
+ExifTool is an external dependency and is not bundled in the `.app`. Install it separately, for example with Homebrew:
+
+```bash
+brew install exiftool
+```
+
+At startup the application detects ExifTool in this order:
+
+1. `exiftool` on `PATH`
+2. `/opt/homebrew/bin/exiftool` (Apple Silicon Homebrew)
+3. `/usr/local/bin/exiftool` (Intel Homebrew)
+
+If none is found the GUI still launches and stops at `Start` with installation guidance.
+
+### Download the macOS app (.app)
+
+A prebuilt ZIP for Apple Silicon is attached to the GitHub Release:
+
+`Photo-Date-Restore-v1.1.0-macOS-Apple-Silicon.zip`
+
+This `.app` is unsigned and not notarized. macOS may show a security warning the first time you open it; if so, allow it from System Settings > Privacy & Security. ExifTool must be installed separately.
+
 ### Build the `.app`
 
 From the repository root, use the GUI development `.venv-gui`:
 
 ```bash
+./.venv-gui/bin/pip install -e . --no-deps
 ./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
 ```
 
-The result is `dist/Photo Date Restore.app`. The `.app` does not include ExifTool; at startup it searches `PATH`, `/opt/homebrew/bin`, and `/usr/local/bin` for it.
+The result is `dist/Photo Date Restore.app`. `dist/` is generated output and is not tracked by Git.
+
+For how to build the release ZIP and compute its checksums, see "4.4 Building and verifying the release ZIP" in [docs/en/usage.md](docs/en/usage.md).
 
 ## Safety notes
 
@@ -156,6 +210,10 @@ For details, see [docs/en/usage.md](docs/en/usage.md).
 
 Kimiya Kitani
 
+## Project
+
+<https://github.com/kimipooh/takeout-album-exporter>
+
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+MIT License. Copyright (c) 2026 Kimiya Kitani. See [LICENSE](LICENSE).
