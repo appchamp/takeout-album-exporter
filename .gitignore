@@ -16,7 +16,7 @@ build/
 dist/
 
 # Release artifacts (attached to GitHub Release, never committed)
-/Photo-Date-Restore-*.zip
+/release/
 
 # Local scratch data
 scratchpad/

@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.1.0 (2026-08-28)
+## v1.1.0 (2026-08-29)
 
 ### 追加
 
@@ -20,7 +20,7 @@
 
 - audit report の内部 status は保持したまま、verbose 表示だけを利用者向けの説明へ変更
 - Cancel 時も確定済みの部分結果を保持し、指定時は監査 report を保存
-- ExifTool metadata read をディレクトリ単位の一括読み取りから100件ずつのバッチ読み取りへ変更。判定（TZ_INFERRED 等の sibling offset 推定を含む）は従来通りディレクトリ全体の metadata が揃ってから実行し、結果は変わらない
+- ExifTool metadata read をディレクトリ単位の一括読み取りから50件ずつのバッチ読み取りへ変更。判定（TZ_INFERRED 等の sibling offset 推定を含む）は従来通りディレクトリ全体の metadata が揃ってから実行し、結果は変わらない
 - GUI へ metadata read の進捗（`Reading metadata:` → `Analyzing:`）を表示する任意の metadata_progress コールバックを追加（CLI の挙動は不変）
 - Cancel がバッチ境界でも反応するようになり、大きなディレクトリでの Cancel 待ち時間を短縮
 - GUI の progress bar を、metadata read・解析の進捗に応じて indeterminate から determinate へ切り替えるよう変更
@@ -35,6 +35,8 @@
 - `README-ja.md`を日本語正本として新設し、`README.md`をその英訳として整理
 - 利用マニュアルと設計書を`docs/ja/`・`docs/en/`へ分離し、旧`docs/design.md`は互換案内として維持
 - 実CLIに照合したQuick Start、実データdry-run例、report/status、timezone、in-place、JSON退避、安全な推奨ワークフローを追加
+- README と利用マニュアルを利用者向けに整理し、GUI の配布版と CLI の必要ソフトウェアを明確化
+- GUI のソースビルドと maintainer 向けリリース手順を別ドキュメントへ分離し、Release ZIP を `release/` フォルダへ配置
 
 ## v1.0.0 (2026-08-27)
 
