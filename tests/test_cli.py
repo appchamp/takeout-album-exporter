@@ -88,3 +88,8 @@ def test_verbose_prints_rows_and_preserves_summary_and_exit_code(tmp_path, monke
 def test_version_is_1_1_0(tmp_path, capsys):
     assert main([str(tmp_path), "--output", str(tmp_path / "out"), "--version"]) == 0
     assert capsys.readouterr().out == "photo-date-restore 1.1.0\n"
+
+
+def test_version_alone_needs_no_other_arguments(capsys):
+    assert main(["--version"]) == 0
+    assert capsys.readouterr().out == "photo-date-restore 1.1.0\n"

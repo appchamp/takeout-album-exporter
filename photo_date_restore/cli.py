@@ -58,14 +58,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-
-    if args.version:
+    # --version must work on its own, before argparse enforces the required
+    # `input` and `--output` / `--in-place` arguments.
+    if "--version" in (sys.argv[1:] if argv is None else list(argv)):
         from . import __version__
 
         print(f"photo-date-restore {__version__}")
         return 0
+
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
     if not args.input.exists():
         print(f"error: input not found: {args.input}", file=sys.stderr)
