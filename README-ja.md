@@ -31,11 +31,11 @@ photo.jpg
 photo.jpg.supplemental-metadata.json
 ```
 
-本ツールは同じディレクトリ内の JSON を一意に対応付けます。既存の正しい撮影日時は上書きせず、根拠が不十分なときは推測で `DateTimeOriginal` を書きません。JSON の `creationTime` は撮影日時に使いません。
+本ツールは同じディレクトリ内の JSON を一意に対応付け、既存の有効な撮影日時は上書きしません。一意に対応した JSON の `photoTakenTime` と十分な timezone 根拠がある場合は撮影日時を復元し、JPEG/TIFF には `DateTimeOriginal` / `CreateDate` を書きます。元々 EXIF がない JPEG/TIFF では新しい EXIF metadata block が作成される場合があります。timezone を確定できない場合は推測で撮影日時 metadata を書かず、`mtime` のみを修復します。JSON の `creationTime` は撮影日時に使いません。
 
 ## 主な機能
 
-- Google フォトの写真・動画について、sidecar JSON と既存 EXIF/XMP を照合して撮影日時と filesystem `mtime` を復元
+- Google フォトの写真・動画について、sidecar JSON と既存 EXIF/XMP を照合して撮影日時と filesystem `mtime` を復元（JPEG/TIFF は十分な根拠があれば欠けた EXIF 撮影日時を追加し、元々 EXIF がない場合は新しい EXIF metadata block が作成される場合あり）
 - dry-run が既定。実際の書き込みは `--apply` を明示したときだけ
 - 元データを変更しない copy mode 主体（GUI は copy mode 専用）
 - 逐次出力（verbose）でファイルごとの処理結果を利用者向けの説明として表示

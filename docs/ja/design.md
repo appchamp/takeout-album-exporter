@@ -240,7 +240,7 @@ JSON creationTime          1704153600 = 2024-01-02 00:00:00 UTC
 | 検証 | 結果 |
 | --- | --- |
 | EXIF 無し JPEG（Adobe 書き出し）へ `EXIF:DateTimeOriginal` / `CreateDate` / `OffsetTimeOriginal` を追記 | 成功。既存 XMP・ICC・Adobe APP14 は保持。サイズ +105 バイト。画像データ非再エンコード |
-| PNG へ `XMP-photoshop:DateCreated` / `XMP-xmp:CreateDate` / `PNG:CreationTime` を書き込み | 成功 |
+| PNG へ `XMP-photoshop:DateCreated` / `XMP-xmp:CreateDate` を書き込み | 成功 |
 | PNG へ `EXIF:DateTimeOriginal` を書き込み（eXIf チャンク） | ExifTool 上は成功。ただし PNG の eXIf チャンクは対応ビューアが限られるため既定 OFF 推奨 |
 | MP4 へ `-api QuickTimeUTC=1` 付きで `QuickTime:CreateDate=2024:01:01 09:00:00+09:00` | 成功。**ファイル内には UTC の `2017:11:06 23:40:23` が格納される**（＝ `photoTakenTime` そのもの） |
 | 同じ MP4 を `-api QuickTimeUTC=1` **なし**で読むと | `2017:11:06 23:40:23` と表示される → **オプションを付け忘れると 9 時間ずれる典型事故** |
@@ -717,19 +717,19 @@ GPTH の Issue #436 / #450 で報告されている「日付がおかしい」�
 `_write_png_datetime` / 将来の `_write_heic_datetime` / `_write_video_datetime`）へ振り分ける（§20）。
 呼び出し側（`decide` / `applier`）は媒体の形式を意識しない。
 
-v1.0 で実際に書き込みへ対応するのは **安全性を優先して JPEG/TIFF に限定**する。
-PNG は §3.7 で書き込み実測済み（XMP 経由、非破壊）のため読み取り・照合は必須、
-書き込みも実測結果に基づき安全な方式（XMP-photoshop:DateCreated 等）でのみ対応する。
-HEIC / 動画は実サンプルが無いため v1.0 の必須完成条件にはせず、
-`--enable-heic` / `--enable-video` の opt-in として設計のみ維持する（§18.2 のまま変更なし）。
+v1.0 で実際に書き込みへ対応するのは **JPEG/TIFF/PNG** である。
+JPEG/TIFF は、`photoTakenTime` が一意に対応し timezone 根拠が確定した場合、既存 EXIF の有無にかかわらず
+`DateTimeOriginal` / `CreateDate` を書き得る。元々 EXIF がない JPEG/TIFF では ExifTool が新しい EXIF metadata block を作成する場合がある。
+PNG は §3.7 で書き込み実測済み（XMP 経由、非破壊）のため、`XMP-photoshop:DateCreated` / `XMP-xmp:CreateDate` のみを使う。
+HEIC / HEIF と動画は現行版ではメタデータ書き込み未対応である。
 
 **方針: 既存タグを破壊せず、欠けているものだけ追記する。**
 
 | 形式 | 書き込むタグ | 補足 |
 | --- | --- | --- |
-| JPEG / TIFF | `EXIF:DateTimeOriginal`, `EXIF:CreateDate`, `EXIF:OffsetTimeOriginal`, `EXIF:OffsetTimeDigitized` | `IFD0:ModifyDate` は **書かない**（意味が「ファイル更新日時」であり撮影日時ではないため）。`--write-modifydate` で opt-in |
-| PNG | `XMP-photoshop:DateCreated`, `XMP-xmp:CreateDate`, `PNG:CreationTime` | `EXIF:DateTimeOriginal`（eXIf チャンク）は `--png-exif` で opt-in。互換性が低い |
-| HEIC | `EXIF:DateTimeOriginal`, `EXIF:CreateDate`, `EXIF:OffsetTimeOriginal` | **`--enable-heic` で opt-in**（実サンプル未検証） |
+| JPEG / TIFF | `EXIF:DateTimeOriginal`, `EXIF:CreateDate`, `EXIF:OffsetTimeOriginal`, `EXIF:OffsetTimeDigitized` | `IFD0:ModifyDate` は **書かない**（意味が「ファイル更新日時」であり撮影日時ではないため）。現行 CLI に `--write-modifydate` はない |
+| PNG | `XMP-photoshop:DateCreated`, `XMP-xmp:CreateDate` | `EXIF:DateTimeOriginal`（eXIf チャンク）は現行版では書かない |
+| HEIC / HEIF / 動画 | なし | 現行版ではメタデータ書き込み未対応 |
 
 既存タグの上書きポリシー:
 
@@ -738,17 +738,9 @@ HEIC / 動画は実サンプルが無いため v1.0 の必須完成条件には�
 - 例外的に `OffsetTimeOriginal` のみ、値が欠けていて §8 でオフセットを確定できた場合に追記する
   → `--add-offset`（**既定 OFF**、§23-11 で要判断）
 
-### 9.3 動画への書き込みタグ
+### 9.3 動画への書き込み
 
-| タグ | 値 |
-| --- | --- |
-| `QuickTime:CreateDate` / `ModifyDate` / `TrackCreateDate` / `TrackModifyDate` / `MediaCreateDate` / `MediaModifyDate` | 撮影日時（`-api QuickTimeUTC=1` 経由でオフセット付き文字列を渡す。ファイル内には UTC で格納される） |
-| `Keys:CreationDate` | 撮影日時（オフセット付き。Apple 系がここを参照） |
-
-**必須**: すべての読み取り・書き込みで `-api QuickTimeUTC=1` を付ける。付け忘れると 9 時間ずれる（§3.7 実測）。
-
-**初版では `--enable-video` による opt-in とする。** 理由: 本テストデータに動画が 1 件も存在せず、
-既定 ON にする根拠がない。動画は 1 ファイルが大きく、書き込み失敗時の影響も大きい。
+動画のメタデータ書き込みは現行版では未対応である。QuickTime タグへの書き込みは将来案であり、`--enable-video` を含む opt-in は現行 CLI に存在しない。
 
 ### 9.4 書き込み後の読み戻し検証（必須）
 
@@ -1165,15 +1157,15 @@ skip_mtime      := |現在の mtime − 期待値| < 1 秒
 | --- | --- | --- | --- | --- |
 | **JPEG** | ○ | ○ | **○（既定 ON）** | 実データ 21 件で読み書きを検証済み。最も枯れている |
 | **TIFF** | ○ | ○ | **○（既定 ON）** | JPEG と同じ EXIF 構造 |
-| **PNG** | ○ | ○ | **○（既定 ON、XMP + PNG:CreationTime のみ）** | 実データ 1 件で読み書きを検証済み。EXIF eXIf チャンクは `--png-exif` で opt-in |
-| HEIC / HEIF | ○ | ○ | `--enable-heic` で opt-in | **実サンプルが無く未検証**。ExifTool は対応しているが、iOS 由来の HEIC は構造が複雑 |
-| MP4 / MOV / M4V | ○ | ○ | `--enable-video` で opt-in | 合成 MP4 で読み書きを検証済みだが、**実 Takeout 動画のサンプルが無い**。1 ファイルが大きく失敗コストが高い |
+| **PNG** | ○ | ○ | **○（既定 ON、XMP のみ）** | 実データ 1 件で読み書きを検証済み。EXIF eXIf チャンクは現行版では書かない |
+| HEIC / HEIF | ○ | ○ | × | **現行版では未対応**。実サンプルが無く未検証 |
+| MP4 / MOV / M4V | ○ | ○ | × | **現行版では未対応**。実 Takeout 動画のサンプルが無い |
 | GIF / WebP / DNG / その他 | ○ | ○ | × | 日時タグの規格が形式ごとにばらつく。mtime のみ復元 |
 | 上記以外 | — | — | — | `UNSUPPORTED` |
 
 **「初期バージョンで対応範囲を限定するほうが安全か」への回答: はい。**
-上表のとおり、**メタデータ書き込みは JPEG / TIFF / PNG に限定し、HEIC・動画は opt-in** とすることを推奨する。
-mtime の復元だけは全形式で行えるため、opt-in しなくても「Finder で撮影日順に並ぶ」という
+上表のとおり、**メタデータ書き込みは JPEG / TIFF / PNG に限定し、HEIC・動画は現行版では未対応**である。
+mtime の復元だけは全形式で行えるため、メタデータ書き込みに対応していなくても「Finder で撮影日順に並ぶ」という
 主要な利用価値は全ファイルで得られる。
 
 ### 18.3 Live Photo / Motion Photo
@@ -1244,8 +1236,7 @@ Python パッケージとして `python -m photo_date_restore` でも、
       --add-offset             EXIF はあるがオフセットが無い場合にオフセットのみ追記（既定 OFF）
       --write-modifydate       IFD0:ModifyDate も書く（既定 OFF）
       --png-exif               PNG に eXIf チャンクを書く（既定 OFF）
-      --enable-heic            HEIC への書き込みを有効化（既定 OFF）
-      --enable-video           動画への書き込みを有効化（既定 OFF）
+      # `--enable-heic` / `--enable-video` は将来案であり、現行 CLI には存在しない
       --preserve-xattr         -overwrite_original_in_place を使う（xattr 保持・ロールバック不可）
 
 対象の絞り込み
@@ -1303,7 +1294,7 @@ photo-date-restore sources/Takeout --output /dev/null --dry-run --report audit.j
 | `--output` / `--in-place` のどちらかを必須に | 「何もしないつもりが上書きしていた」を防ぐ |
 | `--timezone` を明示可能に | UTC → ローカル変換の事故防止（§8）。本ツール最大のリスク箇所 |
 | `--json-fallback` で `creationTime` を opt-in 化 | `creationTime` は撮影日時ではないため（§7.1） |
-| `--enable-video` / `--enable-heic` を opt-in 化 | 実サンプルでの検証が済んでいないため（§18.2） |
+| HEIC / 動画のメタデータ書き込みを現行版では未対応とする | 実サンプルでの検証が済んでいないため（§18.2） |
 | `--resume` を追加 | 数万件規模での中断・再開のため |
 
 ---
@@ -1487,7 +1478,7 @@ takeout-album-exporter/
 | 4 | **birth time の扱い** | 何もしない（副作用に任せる）/ `SetFile` で明示設定 | **何もしない**。§10.2 の実測で mtime を過去に設定すれば btime も追随する |
 | 5 | **`-編集済み` 版の扱い** | 両方出す / 原版のみ / 編集版のみ | **両方出す（既定）**。`--edited-policy` で選択可能に |
 | 6 | **アルバム情報の保存方法** | レポートのみ / `albums.csv` / JSON もコピー / アルバム別フォルダ構造の維持のみ | **レポート + `albums.csv`**。ただしリポジトリ名が `takeout-album-exporter` である以上、将来アルバム出力機能と統合する可能性がある。設計の整合を先に決めておきたい |
-| 7 | **HEIC / 動画を初版に含めるか** | opt-in / 既定 ON / 初版では非対応 | **opt-in**。実サンプルが無いため既定 ON にする根拠がない。**利用者に実 Takeout の HEIC / MP4 / MOV サンプルの提供を依頼したい** |
+| 7 | **HEIC / 動画を初版に含めるか** | opt-in / 既定 ON / 初版では非対応 | **初版では非対応**。実サンプルが無いため既定 ON にする根拠がない。将来対応には実 Takeout の HEIC / MP4 / MOV サンプルが必要 |
 | 8 | **GPS・説明文・人物タグの書き戻し** | 初版に含める / 将来 | **将来**（GPTH #195 / #273 で要望が多い機能。日時と混ぜると検証が複雑化する） |
 | 9 | **Google Drive 同期フォルダ上での in-place 実行** | 警告のみ / 禁止 | **警告のみ**。今回の作業ディレクトリ自体が Google Drive 上にあるため、現実的に発生しうる |
 | 10 | **`sources/Takeout` 配下に生成された空の `.claude` ディレクトリ** | 削除する / 放置する | **削除を推奨**（`rmdir sources/Takeout/.claude/.cc-writes` 等）。ツールの走査対象にはならない（隠しディレクトリ除外）が、原データを汚したままにしたくない |
@@ -1533,7 +1524,7 @@ Codex CLI への引き継ぎ単位として、以下のフェーズに分割す�
 
 ### Phase 4: 形式拡張（実サンプル入手後）
 
-- HEIC（`--enable-heic`）、MP4 / MOV（`--enable-video`）
+- HEIC、MP4 / MOV のメタデータ書き込み
 - Live Photo ペア処理の検討
 - 並列化（`--jobs`）の検討
 - **前提**: 利用者から実 Takeout の HEIC / 動画サンプルを入手できること（§23-7）

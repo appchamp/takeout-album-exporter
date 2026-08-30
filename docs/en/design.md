@@ -227,16 +227,16 @@ Current write dispatch is format-independent:
 | Format | Current tags |
 | --- | --- |
 | JPEG/TIFF | `EXIF:DateTimeOriginal`, `EXIF:CreateDate`, `EXIF:OffsetTimeOriginal`, `EXIF:OffsetTimeDigitized` |
-| PNG | `XMP-photoshop:DateCreated`, `XMP-xmp:CreateDate`, `PNG:CreationTime` |
+| PNG | `XMP-photoshop:DateCreated`, `XMP-xmp:CreateDate` |
 | HEIC/video | no metadata write in v1.0 |
 
-Do not write IFD0 `ModifyDate` as capture time. Case B adds missing tags; case A does not write existing capture metadata.
+Do not write IFD0 `ModifyDate` as capture time. When `photoTakenTime` is uniquely matched and timezone evidence is established, JPEG/TIFF can receive `DateTimeOriginal` / `CreateDate` regardless of whether an EXIF block already exists; ExifTool may create a new EXIF metadata block when none existed. Trustworthy existing capture metadata is not overwritten.
 
 ### 9.1 Verification and rollback
 
 After a write, read the target back and verify expected datetime, relevant offset, file type, dimensions where applicable, and nonzero size. ExifTool's `<file>_original` remains until verification succeeds. On in-place failure, restore it and report `VERIFY_FAILED`; on success, remove the backup. No completed run should leave an unintended `_original`.
 
-Historical proposals for QuickTime write tags, `--preserve-xattr`, PNG eXIf, and opt-in HEIC/video are retained in the Japanese record but are not available in v1.0.
+Historical proposals for QuickTime write tags, `--preserve-xattr`, and PNG eXIf are retained in the Japanese record but are not available in v1.0. HEIC/HEIF and video metadata writes are unsupported in the current version.
 
 ## 10. Filesystem dates
 
@@ -339,7 +339,7 @@ Case-insensitive discovery includes `.jpg`, `.jpeg`, `.png`, `.tif`, `.tiff`, `.
 | --- | --- | --- | --- |
 | JPEG | yes | yes | yes |
 | TIFF | yes | yes | yes |
-| PNG | yes | yes | yes, via selected XMP/PNG tags |
+| PNG | yes | yes | yes, via selected XMP tags |
 | HEIC/HEIF | yes | yes where a date is selected | no in v1.0 |
 | Video | yes | yes where a date is selected | no in v1.0 |
 | GIF/WebP/DNG/other discovered types | yes | yes where a date is selected | no |
@@ -524,7 +524,7 @@ The original plan proposed an ExifTool stay-open process for throughput and a re
 
 ### D.2 Per-format historical write design
 
-JPEG/TIFF writes missing `DateTimeOriginal`, `CreateDate`, `OffsetTimeOriginal`, and `OffsetTimeDigitized`; it deliberately does not treat IFD0 `ModifyDate` as capture time. PNG uses Photoshop/XMP creation tags and `PNG:CreationTime`; an eXIf chunk remained an unimplemented compatibility option. The video proposal would write QuickTime create/modify fields under `-api QuickTimeUTC=1` and an offset-bearing `Keys:CreationDate`, but no video metadata write is enabled in v1.0.
+JPEG/TIFF writes `DateTimeOriginal`, `CreateDate`, `OffsetTimeOriginal`, and `OffsetTimeDigitized` when JSON and timezone evidence justify restoration, regardless of whether an EXIF block already exists; it deliberately does not treat IFD0 `ModifyDate` as capture time. PNG uses only Photoshop/XMP creation tags; an eXIf chunk remains unsupported. HEIC/HEIF and video metadata writes are unsupported in v1.0.
 
 Verification sequence:
 
