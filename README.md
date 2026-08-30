@@ -31,11 +31,11 @@ photo.jpg
 photo.jpg.supplemental-metadata.json
 ```
 
-The tool uniquely matches JSON in the same directory. It does not overwrite a trustworthy existing capture time, does not guess `DateTimeOriginal` when evidence is insufficient, and never uses JSON `creationTime` as capture time.
+The tool uniquely matches JSON in the same directory and does not overwrite a trustworthy existing capture time. When a JSON `photoTakenTime` is uniquely matched and timezone evidence is sufficient, it restores the capture time and writes `DateTimeOriginal` / `CreateDate` for JPEG/TIFF. If a JPEG/TIFF originally has no EXIF, ExifTool may create a new EXIF metadata block. When timezone cannot be determined, it does not guess or write capture metadata and repairs only `mtime`. It never uses JSON `creationTime` as capture time.
 
 ## Features
 
-- Restores capture datetime and filesystem `mtime` for Google Photos images and videos by matching sidecar JSON against existing EXIF/XMP
+- Restores capture datetime and filesystem `mtime` for Google Photos images and videos by matching sidecar JSON against existing EXIF/XMP; with sufficient evidence, JPEG/TIFF can gain missing EXIF capture timestamps, and a new EXIF metadata block may be created when none existed
 - Dry run by default; writes only when `--apply` is given explicitly
 - Copy mode first, leaving the original data untouched (the GUI is copy mode only)
 - Verbose output with a user-facing explanation for each processed file
