@@ -17,7 +17,7 @@ Google Photos Takeout から書き出した写真・動画について、Google 
 
 1. [GitHub Release](https://github.com/kimipooh/takeout-album-exporter/releases) から Apple Silicon 版 ZIP をダウンロードします。
 2. ZIP を展開します。
-3. ExifTool を導入します: `brew install exiftool`
+3. ExifTool を導入します。macOS では Homebrew の利用を推奨します。導入方法（Homebrew 未導入の場合を含む）は [Homebrew と ExifTool](#homebrew-と-exiftool) を参照してください。
 4. `Photo Date Restore.app` を起動し、まず dry-run で確認します。
 
 配布済み `.app` には Python/Tk runtime が同梱されているため、利用者が Python、Tk、PyInstaller を導入する必要はありません。詳しくは [GUI 版](#gui-版macos) と [利用マニュアル](docs/ja/usage.md) を参照してください。
@@ -50,7 +50,7 @@ photo.jpg.supplemental-metadata.json
 
 - **必須**: ExifTool
 - **不要**: Python、Tk、PyInstaller（配布済み `.app` には Python/Tk runtime を同梱）
-- **推奨**: GitHub Release から Apple Silicon 版 ZIP を入手し、Homebrew で ExifTool を導入
+- **推奨**: GitHub Release から Apple Silicon 版 ZIP を入手し、[Homebrew と ExifTool](#homebrew-と-exiftool) を参考に ExifTool を導入
 
 ### CLI 版を使う場合
 
@@ -115,7 +115,7 @@ python -m photo_date_restore \
 
 ## GUI 版（macOS）
 
-配布済み `Photo Date Restore.app` を使う場合は ExifTool だけが必要です。ZIP を [GitHub Release](https://github.com/kimipooh/takeout-album-exporter/releases) から取得して展開し、`Photo Date Restore.app` を起動してください。Python/Tk は不要です。
+配布済み `Photo Date Restore.app` では Python/Tk は不要です。ただし ExifTool は `.app` に同梱されていないため、別途導入が必要です。macOS では Homebrew の利用を推奨します。導入方法（Homebrew 未導入の場合を含む）は [Homebrew と ExifTool](#homebrew-と-exiftool) を参照してください。ZIP を [GitHub Release](https://github.com/kimipooh/takeout-album-exporter/releases) から取得して展開し、`Photo Date Restore.app` を起動してください。
 
 この `.app` は unsigned / not notarized です。初回起動時に macOS の警告が表示される場合は、「システム設定 > プライバシーとセキュリティ」から起動を許可してください。
 

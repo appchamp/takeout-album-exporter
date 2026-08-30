@@ -17,7 +17,7 @@ This safety-oriented Python CLI restores and adjusts missing capture timestamps 
 
 1. Download the Apple Silicon ZIP from [GitHub Releases](https://github.com/kimipooh/takeout-album-exporter/releases).
 2. Extract the ZIP.
-3. Install ExifTool: `brew install exiftool`
+3. Install ExifTool. Homebrew is the recommended way to do this on macOS; see [Homebrew and ExifTool](#homebrew-and-exiftool), including if Homebrew is not yet installed.
 4. Open `Photo Date Restore.app` and begin with a dry run.
 
 The distributed `.app` includes the Python/Tk runtime, so end users do not need to install Python, Tk, or PyInstaller. See the [GUI section](#gui-version-macos) and [usage guide](docs/en/usage.md) for details.
@@ -50,7 +50,7 @@ The tool uniquely matches JSON in the same directory and does not overwrite a tr
 
 - **Required:** ExifTool only
 - **Not required:** Python, Tk, or PyInstaller; the distributed `.app` includes the Python/Tk runtime
-- **Recommended:** Download the Apple Silicon ZIP from GitHub Releases and install ExifTool through Homebrew
+- **Recommended:** Download the Apple Silicon ZIP from GitHub Releases and install ExifTool through Homebrew; see [Homebrew and ExifTool](#homebrew-and-exiftool)
 
 ### Using the CLI
 
@@ -115,7 +115,7 @@ Add `-v` / `--verbose` to print a user-facing explanation for each processed fil
 
 ## GUI version (macOS)
 
-To use the distributed `Photo Date Restore.app`, install only ExifTool. Download the ZIP from [GitHub Releases](https://github.com/kimipooh/takeout-album-exporter/releases), extract it, and open `Photo Date Restore.app`; Python/Tk is not needed.
+The distributed `Photo Date Restore.app` does not need Python/Tk. However, ExifTool is not bundled in the `.app` and must be installed separately. Homebrew is the recommended way to do this on macOS; see [Homebrew and ExifTool](#homebrew-and-exiftool), including if Homebrew is not yet installed. Download the ZIP from [GitHub Releases](https://github.com/kimipooh/takeout-album-exporter/releases), extract it, and open `Photo Date Restore.app`.
 
 The `.app` is unsigned and not notarized. If macOS warns on first launch, allow it in System Settings > Privacy & Security.
 
