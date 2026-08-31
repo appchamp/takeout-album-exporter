@@ -79,8 +79,8 @@ This is the shortest CLI path. Run these commands **at the repository root**.
 
 ```bash
 cd /path/to/takeout-photo-date-restorer
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv "$HOME/.venvs/takeout-album-exporter/default"
+source "$HOME/.venvs/takeout-album-exporter/default/bin/activate"
 python -m pip install -e .
 ```
 

@@ -19,11 +19,11 @@ brew install exiftool
 
 ## GUI environment and build
 
-At the repository root, prepare `.venv-gui`, refresh the installed package metadata, then build.
+At the repository root, prepare the external GUI environment at `$HOME/.venvs/takeout-album-exporter/gui`, refresh the installed package metadata, then build.
 
 ```bash
-./.venv-gui/bin/pip install -e . --no-deps
-./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
+"$HOME/.venvs/takeout-album-exporter/gui/bin/pip" install -e . --no-deps
+"$HOME/.venvs/takeout-album-exporter/gui/bin/pyinstaller" --noconfirm packaging/photo-date-restore-gui.spec
 ```
 
 The result is `dist/Photo Date Restore.app`. The build uses `packaging/photo-date-restore-gui.spec`.

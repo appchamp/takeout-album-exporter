@@ -19,11 +19,11 @@ brew install exiftool
 
 ## GUI 用環境とビルド
 
-リポジトリのルートで `.venv-gui` を用意し、インストール済み package metadata を更新してからビルドします。
+リポジトリのルートで外部 GUI 環境 `$HOME/.venvs/takeout-album-exporter/gui` を用意し、インストール済み package metadata を更新してからビルドします。
 
 ```bash
-./.venv-gui/bin/pip install -e . --no-deps
-./.venv-gui/bin/pyinstaller --noconfirm packaging/photo-date-restore-gui.spec
+"$HOME/.venvs/takeout-album-exporter/gui/bin/pip" install -e . --no-deps
+"$HOME/.venvs/takeout-album-exporter/gui/bin/pyinstaller" --noconfirm packaging/photo-date-restore-gui.spec
 ```
 
 生成物は `dist/Photo Date Restore.app` です。spec は `packaging/photo-date-restore-gui.spec` を使います。
