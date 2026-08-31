@@ -36,14 +36,14 @@ python3 --version
 ### 2.2 Create and activate a virtual environment
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv "$HOME/.venvs/takeout-album-exporter/default"
+source "$HOME/.venvs/takeout-album-exporter/default/bin/activate"
 
 python --version
 which python
 ```
 
-After activation, `which python` normally points to `.venv/bin/python`. Use `python` in that activated environment.
+After activation, `which python` normally points to `$HOME/.venvs/takeout-album-exporter/default/bin/python`. Use `python` in that activated environment.
 
 In Windows PowerShell, at the same repository root, use:
 
@@ -73,7 +73,7 @@ python -m photo_date_restore --help
 `python -m photo_date_restore` is the primary launch method in this guide. If you did not activate the virtual environment, start it reliably from the repository root as follows:
 
 ```bash
-.venv/bin/python -m photo_date_restore --help
+"$HOME/.venvs/takeout-album-exporter/default/bin/python" -m photo_date_restore --help
 ```
 
 Installation also creates the `photo-date-restore` console script. It is a **shorthand only when installed and available through the current `PATH`**. You can check it:
@@ -89,8 +89,8 @@ Because some environments report `photo-date-restore: command not found`, all re
 ```bash
 cd /path/to/takeout-photo-date-restorer
 
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv "$HOME/.venvs/takeout-album-exporter/default"
+source "$HOME/.venvs/takeout-album-exporter/default/bin/activate"
 
 python -m pip install -e .
 ```
@@ -378,7 +378,7 @@ python -m photo_date_restore \
 The console script is not on PATH. Run:
 
 ```bash
-source .venv/bin/activate
+source "$HOME/.venvs/takeout-album-exporter/default/bin/activate"
 python -m photo_date_restore --help
 ```
 
@@ -415,7 +415,7 @@ This is normal in a dry run. After reviewing the report, add `--apply` to the sa
 
 1. Preserve the original Google Takeout separately.
 2. Move to the repository.
-3. Create and activate `.venv`.
+3. Create and activate the external default environment at `$HOME/.venvs/takeout-album-exporter/default`.
 4. Check ExifTool.
 5. Run `python -m pip install -e .`.
 6. Dry run one album.

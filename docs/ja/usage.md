@@ -36,14 +36,14 @@ python3 --version
 ### 2.2 仮想環境を作成・有効化する
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv "$HOME/.venvs/takeout-album-exporter/default"
+source "$HOME/.venvs/takeout-album-exporter/default/bin/activate"
 
 python --version
 which python
 ```
 
-有効化後の `which python` は通常 `.venv/bin/python` を示します。この状態では `python` を使います。
+有効化後の `which python` は通常 `$HOME/.venvs/takeout-album-exporter/default/bin/python` を示します。この状態では `python` を使います。
 
 Windows の PowerShell では、同じリポジトリのルートで次を使います。
 
@@ -73,7 +73,7 @@ python -m photo_date_restore --help
 `python -m photo_date_restore` がこのマニュアルの主たる起動方法です。仮想環境を有効化し忘れた場合も、リポジトリのルートで次のように確実に起動できます。
 
 ```bash
-.venv/bin/python -m photo_date_restore --help
+"$HOME/.venvs/takeout-album-exporter/default/bin/python" -m photo_date_restore --help
 ```
 
 インストールにより `photo-date-restore` という console script も生成されますが、これは**インストール済みで、かつ現在の `PATH` から利用可能な場合の短縮形**です。動作確認は可能です。
@@ -89,8 +89,8 @@ photo-date-restore --help
 ```bash
 cd /path/to/takeout-photo-date-restorer
 
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv "$HOME/.venvs/takeout-album-exporter/default"
+source "$HOME/.venvs/takeout-album-exporter/default/bin/activate"
 
 python -m pip install -e .
 ```
@@ -380,7 +380,7 @@ python -m photo_date_restore \
 console script が PATH にありません。次を実行してください。
 
 ```bash
-source .venv/bin/activate
+source "$HOME/.venvs/takeout-album-exporter/default/bin/activate"
 python -m photo_date_restore --help
 ```
 
@@ -417,7 +417,7 @@ dry-run では正常です。実際に output を作成するには、report 確
 
 1. Google Takeout 原本を別途保存する。
 2. リポジトリへ移動する。
-3. `.venv` を作成して有効化する。
+3. 外部 default 環境 `$HOME/.venvs/takeout-album-exporter/default` を作成して有効化する。
 4. ExifTool を確認する。
 5. `python -m pip install -e .` を実行する。
 6. アルバム 1 つで dry-run する。
