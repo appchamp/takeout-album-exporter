@@ -278,15 +278,22 @@ def process_directory(
         tags = tags_by_path.get(str(path), {})
         outcome = match_results[e.name]
         sidecar = sidecars.get(outcome.sidecar_ref) if outcome.sidecar_ref else None
+        candidate_sidecars = [
+            sidecars[ref] for ref in getattr(outcome, "candidate_refs", []) if ref in sidecars
+        ]
+        active_taken_time = sidecar.photo_taken_time if sidecar else (
+            candidate_sidecars[0].photo_taken_time if len(candidate_sidecars) == 1 else None
+        )
         ctx_by_name[e.name] = dict(
             path=path,
             tags=tags,
             outcome=outcome,
             sidecar=sidecar,
+            candidate_sidecars=candidate_sidecars,
             existing=metaread.extract_existing_candidate(tags),
             gps_utc=metaread.extract_gps_datetime(tags),
             explicit_offset=metaread.extract_explicit_offset_seconds(tags),
-            cli_offset=_cli_offset_seconds(opts.timezone, sidecar.photo_taken_time if sidecar else None),
+            cli_offset=_cli_offset_seconds(opts.timezone, active_taken_time),
             sidecar_errors=corrupt_by_media[e.name],
         )
 
@@ -337,7 +344,16 @@ def _decide_all(
         elif outcome.tier == JsonMatchTier.NONE:
             result[name] = None
         elif outcome.sidecar_ref is None:
-            result[name] = None  # AMBIGUOUS_JSON, handled in _build_row
+            if ctx["existing"] is not None and len(ctx.get("candidate_sidecars", [])) == 1:
+                cand_sc = ctx["candidate_sidecars"][0]
+                result[name] = decide(
+                    ctx["existing"], cand_sc,
+                    gps_utc=ctx["gps_utc"], explicit_offset_seconds=ctx["explicit_offset"],
+                    cli_offset_seconds=None,
+                    conflict_seconds=opts.conflict_seconds, tz_tolerance=opts.tz_tolerance,
+                )
+            else:
+                result[name] = None  # AMBIGUOUS_JSON, handled in _build_row
         else:
             result[name] = decide(
                 ctx["existing"], ctx["sidecar"],
@@ -381,8 +397,12 @@ def _redecide_with_siblings(
             return None
         if d is not None and d.status in (Status.EXIF_JSON_POSSIBLE_TZ, Status.JSON_TIME_MTIME_ONLY):
             ctx = ctx_by_name[name]
+            outcome = ctx["outcome"]
+            active_sc = ctx["sidecar"] if outcome.sidecar_ref else (
+                ctx["candidate_sidecars"][0] if len(ctx.get("candidate_sidecars", [])) == 1 else None
+            )
             final[name] = decide(
-                ctx["existing"], ctx["sidecar"],
+                ctx["existing"], active_sc,
                 gps_utc=ctx["gps_utc"], explicit_offset_seconds=ctx["explicit_offset"],
                 sibling_offset_seconds=sibling_offset, sibling_count=sibling_count,
                 cli_offset_seconds=ctx["cli_offset"],
@@ -453,6 +473,33 @@ def _build_row(dir_path: Path, opts: Options, ctx: dict, decision: Optional[Deci
         _handle_json_move(row, sidecar, opts)
         return row
     if outcome.sidecar_ref is None:
+        if decision is not None and ctx["existing"] is not None:
+            cand_sc = ctx["candidate_sidecars"][0] if len(ctx.get("candidate_sidecars", [])) == 1 else None
+            row["json_sidecar"] = getattr(cand_sc, "path", "") and Path(cand_sc.path).name or ""
+            row["difference_seconds"] = decision.difference_seconds if decision.difference_seconds is not None else ""
+            row["implied_offset_seconds"] = decision.implied_offset_seconds if decision.implied_offset_seconds is not None else ""
+            row["selected_datetime"] = decision.selected_datetime.isoformat() if decision.selected_datetime else ""
+            row["selected_datetime_source"] = decision.selected_datetime_source or ""
+            row["timezone_source"] = decision.timezone_source.value
+            row["timezone_offset"] = (
+                _format_offset(decision.timezone_offset_seconds) if decision.timezone_offset_seconds is not None else ""
+            )
+            row["confidence"] = decision.confidence.value if decision.confidence else ""
+            row["planned_metadata_action"] = "NONE"
+            row["planned_mtime_action"] = decision.planned_mtime_action
+            row["status"] = decision.status.value
+            row["message"] = decision.message
+            if cand_sc:
+                row["json_photo_taken_time"] = cand_sc.photo_taken_time.isoformat() if cand_sc.photo_taken_time else ""
+                row["json_creation_time"] = cand_sc.creation_time.isoformat() if cand_sc.creation_time else ""
+            # Because sidecar was contested/ambiguous across media, never move it:
+            row["planned_json_action"] = "SKIP_STATUS" if opts.move_json else "NONE"
+            if decision.status in (Status.NO_DATE, Status.EXIF_JSON_CONFLICT):
+                _finalize_no_action(row, path, opts)
+                return row
+            _apply(row, path, decision, file_type, opts)
+            return row
+
         row["status"] = Status.AMBIGUOUS_JSON.value
         row["message"] = f"{outcome.candidate_count} 件の JSON 候補が同点でした"
         _finalize_no_action(row, path, opts)

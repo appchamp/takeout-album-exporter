@@ -184,3 +184,105 @@ def test_mtime_only_dry_run_reports_apply_value_without_changing_file(tmp_path, 
     assert datetime.fromisoformat(apply_rows[0]["new_mtime"]) == TAKEN_UTC
     assert media.stat().st_mtime == pytest.approx(TAKEN_UTC.timestamp(), abs=0.001)
     assert apply_rows[0]["new_mtime"] == dry_rows[0]["new_mtime"]
+
+
+def test_ambiguous_json_with_matching_existing_exif_reports_match(tmp_path, monkeypatch):
+    album = tmp_path / "input" / "album"
+    album.mkdir(parents=True)
+    orig = album / "image.jpg"
+    orig.write_bytes(b"original")
+    edited = album / "image-edited.jpg"
+    edited.write_bytes(b"edited")
+
+    sidecar = album / "image.jpg.json"
+    sidecar.write_text(json.dumps({
+        "title": "image.jpg",
+        "photoTakenTime": {"timestamp": TAKEN_TIMESTAMP},
+    }), encoding="utf-8")
+
+    def fake_read(paths, exiftool_path="exiftool"):
+        return {
+            str(p): {
+                "File:FileType": "JPEG",
+                "EXIF:DateTimeOriginal": "2020:01:01 00:00:00",
+            }
+            for p in paths
+        }
+
+    monkeypatch.setattr(et, "read_tags_batch", fake_read)
+
+    rows = run(Options(input=tmp_path / "input", output=tmp_path / "out"))
+    by_name = {Path(r["file"]).name: r for r in rows}
+
+    assert by_name["image.jpg"]["status"] == Status.EXIF_JSON_MATCH.value
+    assert by_name["image.jpg"]["planned_metadata_action"] == "NONE"
+    assert by_name["image.jpg"]["planned_json_action"] == "NONE"
+
+    assert by_name["image-edited.jpg"]["status"] == Status.EXIF_JSON_MATCH.value
+    assert by_name["image-edited.jpg"]["planned_metadata_action"] == "NONE"
+    assert by_name["image-edited.jpg"]["planned_json_action"] == "NONE"
+
+
+def test_ambiguous_json_without_existing_exif_remains_ambiguous(tmp_path, monkeypatch):
+    album = tmp_path / "input" / "album"
+    album.mkdir(parents=True)
+    orig = album / "image.jpg"
+    orig.write_bytes(b"original")
+    edited = album / "image-edited.jpg"
+    edited.write_bytes(b"edited")
+
+    sidecar = album / "image.jpg.json"
+    sidecar.write_text(json.dumps({
+        "title": "image.jpg",
+        "photoTakenTime": {"timestamp": TAKEN_TIMESTAMP},
+    }), encoding="utf-8")
+
+    def fake_read(paths, exiftool_path="exiftool"):
+        return {str(p): {"File:FileType": "JPEG"} for p in paths}
+
+    monkeypatch.setattr(et, "read_tags_batch", fake_read)
+
+    rows = run(Options(input=tmp_path / "input", output=tmp_path / "out"))
+    by_name = {Path(r["file"]).name: r for r in rows}
+
+    assert by_name["image.jpg"]["status"] == Status.AMBIGUOUS_JSON.value
+    assert by_name["image-edited.jpg"]["status"] == Status.AMBIGUOUS_JSON.value
+
+
+def test_ambiguous_json_with_matching_exif_is_not_moved(tmp_path, monkeypatch):
+    album = tmp_path / "input" / "album"
+    album.mkdir(parents=True)
+    orig = album / "image.jpg"
+    orig.write_bytes(b"original")
+    edited = album / "image-edited.jpg"
+    edited.write_bytes(b"edited")
+
+    sidecar = album / "image.jpg.json"
+    sidecar.write_text(json.dumps({
+        "title": "image.jpg",
+        "photoTakenTime": {"timestamp": TAKEN_TIMESTAMP},
+    }), encoding="utf-8")
+    vault = tmp_path / "vault"
+
+    def fake_read(paths, exiftool_path="exiftool"):
+        return {
+            str(p): {
+                "File:FileType": "JPEG",
+                "EXIF:DateTimeOriginal": "2020:01:01 00:00:00",
+            }
+            for p in paths
+        }
+
+    monkeypatch.setattr(et, "read_tags_batch", fake_read)
+
+    rows = run(Options(input=tmp_path / "input", in_place=True, apply=True, move_json=vault))
+    by_name = {Path(r["file"]).name: r for r in rows}
+
+    assert by_name["image.jpg"]["status"] == Status.EXIF_JSON_MATCH.value
+    assert by_name["image.jpg"]["planned_json_action"] == "SKIP_STATUS"
+    assert by_name["image-edited.jpg"]["status"] == Status.EXIF_JSON_MATCH.value
+    assert by_name["image-edited.jpg"]["planned_json_action"] == "SKIP_STATUS"
+
+    # Crucial safety check: sidecar remains untouched, vault is not created
+    assert sidecar.exists()
+    assert not vault.exists()
