@@ -27,7 +27,7 @@ from __future__ import annotations
 import os
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from .models import JsonMatchTier
@@ -177,6 +177,7 @@ class MatchOutcome:
     tier: JsonMatchTier
     sidecar_ref: Optional[object]
     candidate_count: int
+    candidate_refs: List[object] = field(default_factory=list)
 
 
 def match_all(media_names: List[str], candidates: List[JsonCandidate]) -> Dict[str, MatchOutcome]:
@@ -217,16 +218,17 @@ def match_all(media_names: List[str], candidates: List[JsonCandidate]) -> Dict[s
 
     results: Dict[str, MatchOutcome] = {}
     for media, (tier, cands) in best_choice.items():
+        cand_refs = [c.ref for c in cands]
         if tier == JsonMatchTier.NONE:
-            results[media] = MatchOutcome(tier=JsonMatchTier.NONE, sidecar_ref=None, candidate_count=0)
+            results[media] = MatchOutcome(tier=JsonMatchTier.NONE, sidecar_ref=None, candidate_count=0, candidate_refs=[])
             continue
         if len(cands) > 1:
-            results[media] = MatchOutcome(tier=tier, sidecar_ref=None, candidate_count=len(cands))
+            results[media] = MatchOutcome(tier=tier, sidecar_ref=None, candidate_count=len(cands), candidate_refs=cand_refs)
             continue
         ref = cands[0].ref
         if claim_count.get(ref, 0) > 1:
-            results[media] = MatchOutcome(tier=tier, sidecar_ref=None, candidate_count=claim_count[ref])
+            results[media] = MatchOutcome(tier=tier, sidecar_ref=None, candidate_count=claim_count[ref], candidate_refs=[ref])
             continue
-        results[media] = MatchOutcome(tier=tier, sidecar_ref=ref, candidate_count=1)
+        results[media] = MatchOutcome(tier=tier, sidecar_ref=ref, candidate_count=1, candidate_refs=[ref])
 
     return results
